@@ -131,6 +131,19 @@
   }
   .card .icon svg { width: 22px; height: 22px; }
 
+  .screenshot { margin: 0; min-width: 0; }
+  .screenshot a { display: block; border-radius: var(--radius); }
+  .screenshot a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+  .screenshot img {
+    display: block; width: 100%; height: auto;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .screenshot figcaption { margin-top: 12px; color: var(--muted); font-size: 0.95rem; }
+  .screenshot figcaption strong { display: block; color: var(--text); }
+  .phone-screenshots { margin: 28px 0; }
+  .phone-screenshots .screenshot { width: 100%; max-width: 280px; justify-self: center; }
+
   .diagram {
     display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
     margin: 26px 0 0; font-size: 0.9rem; color: var(--muted);
@@ -187,6 +200,7 @@
       WiFi Bridge
     </a>
     <nav>
+      <a href="#screenshots">Screenshots</a>
       <a href="#boards">Boards</a>
       <a href="#install">Install</a>
       <a href="#setup">Setup</a>
@@ -253,6 +267,35 @@
         <span class="link">— Wi-Fi —</span>
         <span class="node">Your router</span>
       </div>
+    </div>
+  </section>
+
+  <section id="screenshots">
+    <div class="wrap">
+      <h2>A look at the bridge's page</h2>
+      <p class="sub">Set up, check connections, and install updates from your browser. Select a screenshot to see it full size.</p>
+      <figure class="screenshot">
+        <a href="images/dashboard.png"><img src="images/dashboard.png" width="1770" height="1140" loading="lazy" decoding="async" alt="Desktop dashboard showing the Wi-Fi connection, bridge, wired device, and traffic statistics"></a>
+        <figcaption><strong>See every connection</strong>Check Wi-Fi signal, the wired device's address, and traffic from one dashboard.</figcaption>
+      </figure>
+      <div class="grid phone-screenshots">
+        <figure class="screenshot">
+          <a href="images/setup-phone.png"><img src="images/setup-phone.png" width="585" height="1170" loading="lazy" decoding="async" alt="Phone setup page listing nearby Wi-Fi networks and their signal strength"></a>
+          <figcaption><strong>Set up from your phone</strong>Choose your Wi-Fi network to get started.</figcaption>
+        </figure>
+        <figure class="screenshot">
+          <a href="images/dashboard-phone.png"><img src="images/dashboard-phone.png" width="585" height="1170" loading="lazy" decoding="async" alt="Phone dashboard showing the connected Wi-Fi network, bridge, and wired device"></a>
+          <figcaption><strong>Check status anywhere at home</strong>The dashboard fits a phone screen, too.</figcaption>
+        </figure>
+        <figure class="screenshot">
+          <a href="images/settings-phone.png"><img src="images/settings-phone.png" width="585" height="1170" loading="lazy" decoding="async" alt="Phone Wi-Fi settings page with primary and backup network fields"></a>
+          <figcaption><strong>Change your settings</strong>Manage your primary and backup Wi-Fi networks.</figcaption>
+        </figure>
+      </div>
+      <figure class="screenshot">
+        <a href="images/firmware.png"><img src="images/firmware.png" width="1770" height="960" loading="lazy" decoding="async" alt="Firmware tab with options to install an update from a file or a URL"></a>
+        <figcaption><strong>Update without a cable</strong>Install firmware from a file or URL while keeping your settings.</figcaption>
+      </figure>
     </div>
   </section>
 
