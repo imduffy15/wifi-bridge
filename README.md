@@ -11,7 +11,10 @@ your Wi-Fi network as if it were cabled to the router.
   previous one.
 - Optionally, connect the bridge to MQTT and Home Assistant.
 
-![The bridge's dashboard: Wi-Fi network, bridge, and wired device, each with its status](docs/images/dashboard.png)
+[![The bridge's dashboard: Wi-Fi network, bridge, and wired device, each with its status](docs/images/dashboard.png)](docs/images/dashboard.png)
+
+*The desktop dashboard shows the Wi-Fi connection, bridge, wired device, and traffic. Select any
+screenshot to see it full size, or browse the [installer's screenshot gallery](https://imduffy15.github.io/wifi-bridge-installer/#screenshots).*
 
 ## Install
 
@@ -43,7 +46,9 @@ network*:
 
 The *management address* is the bridge's own fixed IP address. You use it to open the bridge's page.
 
-<img src="docs/images/setup-phone.png" width="280" alt="Setup on a phone: choose your Wi-Fi network from a list">
+<a href="docs/images/setup-phone.png"><img src="docs/images/setup-phone.png" width="280" alt="Setup on a phone: choose your Wi-Fi network from a list"></a>
+
+*Choose a nearby Wi-Fi network from the phone setup page.*
 
 ## How it works
 
@@ -60,7 +65,9 @@ isn't detected, enter its MAC address under **Ethernet > Always bridge one speci
 The **Dashboard** shows whether each link works: Wi-Fi, the bridge, and the wired device. The other tabs
 let you change settings, install firmware updates, read the log, back up settings, and reset the bridge.
 
-<img src="docs/images/dashboard-phone.png" width="280" alt="The dashboard on a phone"> <img src="docs/images/settings-phone.png" width="280" alt="Wi-Fi settings on a phone">
+<a href="docs/images/dashboard-phone.png"><img src="docs/images/dashboard-phone.png" width="280" alt="The dashboard on a phone: Wi-Fi, bridge, and wired device status"></a> <a href="docs/images/settings-phone.png"><img src="docs/images/settings-phone.png" width="280" alt="Wi-Fi settings on a phone: primary and backup networks"></a>
+
+*Check connection status and change Wi-Fi settings from your phone.*
 
 The page has no password by default. If other people share your network, set an **Admin password** on the
 **System** tab.
@@ -74,7 +81,7 @@ On the **Firmware** tab, choose `wifi-bridge-<version>.ota.bin` and click **Inst
 kept. If the new version can't reach Wi-Fi or its page within 10 minutes, the bridge goes back to the
 previous version.
 
-![The Firmware tab: install an update from a file or a URL](docs/images/firmware.png)
+[![The Firmware tab: install an update from a file or a URL](docs/images/firmware.png)](docs/images/firmware.png)
 
 ## Reset and recover
 

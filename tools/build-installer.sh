@@ -9,7 +9,7 @@
 # tools/package.sh or downloaded from a GitHub release); wifi-bridge-<version>.ota.bin is
 # published too when present. The checksums are verified before anything is copied.
 #
-# Result: <outdir>/ = web-installer/ with manifest.json filled in, plus
+# Result: <outdir>/ = web-installer/ with manifest.json filled in, images/ from docs/images/, plus
 # <outdir>/firmware/{wifi-bridge-<version>.factory.bin,.ota.bin,.safeboot.bin,SHA256SUMS}.
 set -euo pipefail
 
@@ -32,6 +32,7 @@ grep -q " $NAME.factory.bin\$" "$FW/SHA256SUMS" || die "SHA256SUMS does not list
 rm -rf "$OUT"
 mkdir -p "$OUT/firmware"
 cp -R "$SRC/." "$OUT/"
+cp -R "$ROOT/docs/images" "$OUT/images"
 cp "$FW/$NAME.factory.bin" "$OUT/firmware/"
 files=("$NAME.factory.bin")
 for f in "$NAME.ota.bin" "$NAME.safeboot.bin"; do
