@@ -5,5 +5,5 @@
     "test": "node tools/ui_test.mjs",
     "lint": "node tools/check-inline-js.mjs main/web/index.html safeboot/main/index.html web-installer/index.html"
   },
-  "devDependencies": {"playwright": "1.58.2"}
+  "devDependencies": {"playwright": "1.65.0"}
 }
