@@ -105,7 +105,9 @@ The board needs 4 MB of flash. After you install the firmware, choose your board
 ## Limitations
 
 - One wired device per bridge.
-- IPv4 only.
+- IPv4 only. The bridge drops IPv6 in both directions.
+- To save Wi-Fi airtime, the bridge sends only the wired device's own traffic. It also limits the device's
+  broadcast and multicast to 30 frames per second, but always passes ARP and DHCP.
 - You can't open the bridge's page from the wired device itself. Use another device on your Wi-Fi network.
 - Throughput is a few Mbit/s: enough for printers and appliances, but not for large file copies.
 - Access points with client isolation block traffic between Wi-Fi clients, including the wired device.
@@ -116,6 +118,9 @@ The board needs 4 MB of flash. After you install the firmware, choose your board
   address from your router. Try `http://<hostname>.local/`, or wait 3 minutes for its setup network.
 - **The wired device doesn't get an address.** Check the cable and the **Wired device** status on the
   **Dashboard**.
+- **Phones or computers can't discover the wired device** (for example, a printer doesn't appear in the
+  print dialog). Discovery uses multicast (mDNS, SSDP). In your access point's settings, turn off
+  multicast or broadcast filtering for this network, or turn on its mDNS option.
 - **Ethernet shows a fault.** The board preset is wrong. Choose the right board on the **Ethernet** tab.
 - **You forgot the admin password.** On the serial port, send `WebPassword "`, or reset everything.
 - **You need more detail.** The serial port (TX0/RX0, 115200 baud) shows the full log and accepts commands.
