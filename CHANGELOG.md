@@ -1,6 +1,13 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## [0.1.2](https://github.com/imduffy15/wifi-bridge/compare/v0.1.1...v0.1.2) (2026-11-09)
+
+
+### Bug Fixes
+
+* save Wi-Fi airtime by filtering wired traffic, drop IPv6 ([#11](https://github.com/imduffy15/wifi-bridge/issues/11)) ([71e92d7](https://github.com/imduffy15/wifi-bridge/commit/71e92d7d5520d94a54fc0b43074fbf5abc39d722))
+
 ## [0.1.1](https://github.com/imduffy15/wifi-bridge/compare/v0.1.0...v0.1.1) (2026-11-09)
 
 
