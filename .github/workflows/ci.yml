@@ -30,7 +30,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Cache managed components
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: managed_components
           key: managed-components-idf5.4-${{ hashFiles('main/idf_component.yml', 'dependencies.lock') }}
@@ -89,7 +89,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Cache managed components
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: managed_components
           key: managed-components-idf5.4-${{ hashFiles('main/idf_component.yml', 'dependencies.lock') }}
