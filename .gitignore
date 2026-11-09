@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+build/
+managed_components/
+sdkconfig
+sdkconfig.old
+sdkconfig.secrets
+*.bin
+
+# release packaging output
+dist/
+_site/
+__pycache__/
+build-qemu/
+build-safeboot/
+build-qemu-safeboot/
+node_modules/

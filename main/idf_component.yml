@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+dependencies:
+  idf: ">=5.4,<5.5"
+  espressif/mdns: "^1.4.0"

@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Bug report
+description: Report something in WiFi Bridge that doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Fill in as much as you can. The **Dashboard** on the
+        bridge's page (or `/api/status`) shows most of the details this form asks for.
+  - type: input
+    id: version
+    attributes:
+      label: Firmware version
+      description: Shown on the bridge's **Dashboard** and in the web installer.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: board
+    attributes:
+      label: Board
+      options:
+        - WT32-ETH01
+        - Olimex ESP32-POE / ESP32-POE-ISO
+        - Olimex ESP32-Gateway
+        - Espressif ESP32-Ethernet-Kit
+        - wESP32
+        - LilyGO T-Internet-POE
+        - Other (describe below)
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install the firmware?
+      options:
+        - Web installer
+        - esptool / idf.py flash
+        - Firmware update from the bridge's page
+        - Firmware update through the safeboot firmware
+        - Other
+  - type: input
+    id: wired
+    attributes:
+      label: Wired device
+      description: What's plugged into the bridge's Ethernet port?
+      placeholder: "For example, a network laser printer"
+  - type: input
+    id: network
+    attributes:
+      label: Wi-Fi network
+      description: Router or access point model, band, and security (for example, WPA2 or WPA3).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Serial log or crash backtrace
+      description: |
+        Serial output at 115200 baud, if you have it. To decode a backtrace, use the
+        `wifi-bridge-<version>.elf` file from the release. Remove passwords before you post.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues, and this isn't a duplicate.
+          required: true
+        - label: I removed passwords and other secrets from the logs above.
+          required: true

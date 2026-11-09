@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+# Weekly updates. Minor and patch updates arrive as one grouped pull request per ecosystem and merge
+# themselves once CI passes (.github/workflows/dependabot-automerge.yml). Major updates arrive one per
+# pull request and wait for review.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+    labels: [dependencies]
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: test
+    labels: [dependencies]
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]

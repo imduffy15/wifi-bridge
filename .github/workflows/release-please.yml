@@ -1,0 +1,271 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Push to main -> release-please opens or updates the release PR.
+# Merging the release PR -> release-please tags vX.Y.Z and creates the GitHub release,
+# then this workflow builds that tag, attaches the firmware to the release and deploys
+# the web installer to GitHub Pages.
+# Manual run (workflow_dispatch) -> redeploy the web installer from the latest release (or the given
+# tag). With "build" ticked it first builds the tag and attaches the firmware to its release (for a
+# release created by hand).
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to deploy to Pages (empty = latest release)
+        required: false
+        default: ""
+      build:
+        description: Build the tag and attach the firmware to its release first
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  release-please:
+    name: Release PR / tag
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: release-please
+      cancel-in-progress: false
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+      version: ${{ steps.rp.outputs.version }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          # Optional PAT / GitHub App token so CI runs on the release PR (PRs opened with
+          # GITHUB_TOKEN do not trigger other workflows). See docs/RELEASING.md.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build:
+    name: Build release firmware
+    needs: release-please
+    if: >-
+      always() &&
+      (needs.release-please.outputs.release_created == 'true' ||
+       (github.event_name == 'workflow_dispatch' && inputs.build && inputs.tag != ''))
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.4
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+      VERSION: ${{ needs.release-please.outputs.version }}   # set from TAG below on manual builds
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Version from the tag
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Check version.txt matches the tag
+        run: |
+          file=$(tr -d ' \t\r\n' < version.txt)
+          if [ "$file" != "$VERSION" ] || [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::tag $TAG / release version $VERSION / version.txt $file disagree"
+            exit 1
+          fi
+
+      - name: Build
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          idf.py build
+          idf.py -C safeboot -B "$PWD/build-safeboot" -D SDKCONFIG="$PWD/build-safeboot/sdkconfig" build
+
+      - name: Package
+        # VERSION is exported above, so package.sh also checks it against PROJECT_VER.
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          tools/package.sh dist
+
+      - name: Size report
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          { echo "## Firmware $VERSION"; echo; echo '```'; idf.py size; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Attach firmware to release
+    needs: [release-please, build]
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: dist
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+        run: |
+          cd dist
+          sha256sum --check --strict SHA256SUMS
+          gh release upload "$TAG" ./* --clobber --repo "$GITHUB_REPOSITORY"
+
+  pages-build:
+    name: Build web installer
+    needs: [release-please, publish]
+    # always() so the job is still considered on workflow_dispatch, where the jobs it
+    # needs are skipped.
+    if: >-
+      always() &&
+      ((github.event_name == 'workflow_dispatch' && needs.publish.result != 'failure') ||
+       (needs.release-please.outputs.release_created == 'true' && needs.publish.result == 'success'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    outputs:
+      enabled: ${{ steps.pages.outputs.enabled }}
+    steps:
+      - name: Check GitHub Pages is enabled
+        # Pages on a private repository needs a paid plan: skip (don't fail the release) until it's available.
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "GitHub Pages is not enabled here; the installer goes to the public installer repository if INSTALLER_DEPLOY_KEY is set. See docs/RELEASING.md." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Resolve release
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+        run: |
+          if [ -z "$TAG" ]; then
+            TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "Deploying web installer for $TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Download release firmware
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.rel.outputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir fw \
+            --pattern '*.factory.bin' --pattern '*.ota.bin' --pattern '*.safeboot.bin' --pattern SHA256SUMS
+
+      - name: Assemble site
+        env:
+          VERSION: ${{ steps.rel.outputs.version }}
+        run: tools/build-installer.sh fw "$VERSION" _site
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.enabled == 'true'
+        with:
+          path: _site
+
+      - name: Keep the site for the installer repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-site
+          path: _site
+          if-no-files-found: error
+
+  pages-deploy:
+    name: Deploy web installer
+    needs: pages-build
+    if: always() && needs.pages-build.result == 'success' && needs.pages-build.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deploy
+
+  installer-repo:
+    name: Publish web installer (public installer repository)
+    # The source repository can stay private: the installer page and release binaries are pushed to a
+    # separate public repository that serves them with GitHub Pages. Needs the INSTALLER_DEPLOY_KEY secret
+    # (SSH deploy key with write access to that repository). See docs/RELEASING.md.
+    needs: pages-build
+    if: always() && needs.pages-build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      INSTALLER_REPO: ${{ vars.INSTALLER_REPO || format('{0}-installer', github.repository) }}
+    steps:
+      - name: Check for the deploy key
+        id: key
+        env:
+          KEY: ${{ secrets.INSTALLER_DEPLOY_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::INSTALLER_DEPLOY_KEY not set: not publishing to $INSTALLER_REPO"
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.key.outputs.present == 'true'
+        with:
+          name: installer-site
+          path: site
+
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.present == 'true'
+        with:
+          repository: ${{ env.INSTALLER_REPO }}
+          ssh-key: ${{ secrets.INSTALLER_DEPLOY_KEY }}
+          path: installer
+
+      - name: Commit and push
+        if: steps.key.outputs.present == 'true'
+        run: |
+          cd installer
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r ../site/. .
+          touch .nojekyll
+          version=$(python3 -c 'import json; print(json.load(open("manifest.json"))["version"])')
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "installer already up to date"; exit 0; fi
+          git commit -m "Deploy web installer for WiFi Bridge $version"
+          git push
+          echo "Published the installer for $version to https://github.com/$INSTALLER_REPO" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,29 @@
+WiFi Bridge
+Copyright 2026 Ian Duffy
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party material
+--------------------
+
+main/bridge.c, main/eth.c and main/eth.h are derived from the ESP-IDF example
+examples/network/sta2eth, Copyright 2023 Espressif Systems (Shanghai) CO LTD,
+licensed "Unlicense OR CC0-1.0".
+
+The firmware is built with ESP-IDF (Apache-2.0, Espressif Systems), including its
+bundled cJSON (MIT) and lwIP (BSD-3-Clause) components, and the espressif/mdns
+component (Apache-2.0). These are fetched at build time and are not part of this
+repository.
+
+The web installer page loads ESP Web Tools (Apache-2.0, Open Home Foundation) from
+a CDN when it runs. The browser tests use Playwright (Apache-2.0, Microsoft) as a
+development dependency.
+
+Acknowledgements
+----------------
+
+The approach to device setup and maintenance is inspired by Tasmota
+(https://github.com/arendst/Tasmota) and ESPHome (https://github.com/esphome/esphome).
+WiFi Bridge contains no code from either project. Its command names and MQTT topic
+layout follow Tasmota's conventions for compatibility. Wi-Fi provisioning over serial
+implements the Improv Wi-Fi protocol (https://www.improv-wifi.com/).

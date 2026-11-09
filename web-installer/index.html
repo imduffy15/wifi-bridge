@@ -1,0 +1,438 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>WiFi Bridge – Web Installer</title>
+<meta name="description" content="Install WiFi Bridge on a WT32-ETH01 or another ESP32 Ethernet board from your browser, and put a wired-only device on Wi-Fi.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232563eb'/%3E%3Cpath d='M8 13a11 11 0 0 1 16 0M11 16.5a6.5 6.5 0 0 1 10 0' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Crect x='11' y='20' width='10' height='6' rx='1.5' fill='white'/%3E%3C/svg%3E">
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --surface-2: #f0f3f7;
+    --text: #18202b;
+    --muted: #5b6676;
+    --border: #dfe4eb;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: #e8efff;
+    --accent-text: #ffffff;
+    --warn-bg: #fff7e6;
+    --warn-border: #f2c46d;
+    --warn-text: #6b4a00;
+    --code-bg: #eef1f5;
+    --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 4px 16px rgb(16 24 40 / 6%);
+    --radius: 14px;
+    /* ESP Web Tools dialog colours */
+    --mdc-theme-primary: var(--accent);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1117;
+      --surface: #161b23;
+      --surface-2: #1c232d;
+      --text: #e6eaf0;
+      --muted: #9aa5b4;
+      --border: #2a323e;
+      --accent: #5b8cff;
+      --accent-hover: #7aa2ff;
+      --accent-soft: #1b2640;
+      --accent-text: #0b1020;
+      --warn-bg: #2a2110;
+      --warn-border: #7a5a1c;
+      --warn-text: #f3d48c;
+      --code-bg: #212833;
+      --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:hover { color: var(--accent-hover); }
+  code, kbd {
+    font: 0.9em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    border-radius: 5px;
+    padding: 0.1em 0.35em;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+
+  header.top { border-bottom: 1px solid var(--border); background: var(--surface); }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--text); text-decoration: none; }
+  .brand svg { width: 28px; height: 28px; }
+  nav a { color: var(--muted); text-decoration: none; margin-left: 20px; font-size: 0.95rem; }
+  nav a:hover { color: var(--text); }
+  @media (max-width: 640px) { nav a:not(:last-child) { display: none; } }
+
+  .hero { padding: 64px 0 40px; text-align: center; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.02em; }
+  .hero p.lead { font-size: 1.15rem; color: var(--muted); max-width: 640px; margin: 0 auto 28px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 0.85rem; color: var(--muted);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 12px; margin-bottom: 22px;
+  }
+  .badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+  .badge.pending .dot { background: #f59e0b; }
+
+  .install-card {
+    max-width: 560px; margin: 0 auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 28px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    font: inherit; font-weight: 600; font-size: 1.05rem;
+    color: var(--accent-text); background: var(--accent);
+    border: 0; border-radius: 10px; padding: 13px 26px; cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+  }
+  .btn:hover { background: var(--accent-hover); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .btn svg { width: 20px; height: 20px; }
+  .install-card .note { color: var(--muted); font-size: 0.9rem; margin: 16px 0 0; }
+  .install-card .links { margin-top: 14px; font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; }
+  .callout {
+    text-align: left; border-radius: 10px; padding: 12px 14px; font-size: 0.93rem;
+    background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text);
+  }
+  .callout + .callout { margin-top: 10px; }
+
+  section { padding: 44px 0; }
+  section + section { border-top: 1px solid var(--border); }
+  h2 { font-size: 1.6rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 + p.sub { color: var(--muted); margin: 0 0 26px; }
+  h3 { font-size: 1.08rem; margin: 0 0 6px; }
+
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+  .card .icon {
+    width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent); margin-bottom: 12px;
+  }
+  .card .icon svg { width: 22px; height: 22px; }
+
+  .diagram {
+    display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+    margin: 26px 0 0; font-size: 0.9rem; color: var(--muted);
+  }
+  .diagram .node {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 14px; color: var(--text); font-weight: 550;
+  }
+  .diagram .node.hl { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .diagram .link { white-space: nowrap; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
+  .tag {
+    display: inline-block; font-size: 0.75rem; font-weight: 600; border-radius: 999px; padding: 1px 8px;
+    background: var(--accent-soft); color: var(--accent); margin-left: 6px; vertical-align: 1px;
+  }
+
+  ol.steps { list-style: none; counter-reset: step; padding: 0; margin: 0; }
+  ol.steps > li {
+    counter-increment: step; position: relative; padding: 0 0 26px 52px;
+  }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: -2px;
+    width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 700;
+    background: var(--accent); color: var(--accent-text);
+  }
+  ol.steps > li:not(:last-child)::after {
+    content: ""; position: absolute; left: 16px; top: 38px; bottom: 6px; width: 2px; background: var(--border);
+  }
+  ol.steps p { margin: 4px 0 10px; }
+  ol.steps ul { margin: 6px 0 10px; padding-left: 20px; }
+  .wiring { margin: 12px 0; max-width: 520px; }
+
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0 16px; margin: 10px 0; }
+  details[open] { padding-bottom: 12px; }
+  summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
+  details p, details ul { margin: 6px 0; color: var(--muted); font-size: 0.95rem; }
+
+  footer { border-top: 1px solid var(--border); padding: 28px 0 40px; color: var(--muted); font-size: 0.9rem; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#2563eb"/><path d="M8 13a11 11 0 0 1 16 0M11 16.5a6.5 6.5 0 0 1 10 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="11" y="20" width="10" height="6" rx="1.5" fill="#fff"/></svg>
+      WiFi Bridge
+    </a>
+    <nav>
+      <a href="#boards">Boards</a>
+      <a href="#install">Install</a>
+      <a href="#setup">Setup</a>
+      <a href="#" data-link="repo">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <div class="badge pending" id="version-badge"><span class="dot"></span><span id="version-text">Loading firmware information…</span></div>
+      <h1>Put any wired device on Wi-Fi</h1>
+      <p class="lead">WiFi Bridge turns a WT32-ETH01 or another ESP32 Ethernet board into a bridge between your Wi-Fi network and the board's Ethernet port. Printers, NAS devices, game consoles, and other wired-only devices join your Wi-Fi network without new cables.</p>
+
+      <div class="install-card" id="install-card">
+        <esp-web-install-button manifest="manifest.json" id="installer">
+          <button slot="activate" class="btn" id="install-btn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            <span id="install-label">Install WiFi Bridge</span>
+          </button>
+          <div slot="unsupported" class="callout">
+            <strong>This browser can't install firmware.</strong> The installer needs Web Serial, which desktop Chrome, Edge, and Opera support. Open this page in one of those browsers.
+          </div>
+          <div slot="not-allowed" class="callout">
+            <strong>This page can't access serial ports.</strong> Open it over HTTPS or from <code>localhost</code>.
+          </div>
+        </esp-web-install-button>
+        <p class="note">Connect the board over USB first (see <a href="#install">the steps below</a>). Then click <strong>Install</strong> and choose its serial port. On a first install, select <strong>Erase device</strong>.</p>
+        <div class="links">
+          <a href="#" data-link="release" id="release-link">Release notes</a>
+          <a href="#" data-link="ota" id="ota-link">Download the update file</a>
+          <a href="firmware/SHA256SUMS" id="sums-link">SHA256SUMS</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="about">
+    <div class="wrap">
+      <h2>What it does</h2>
+      <p class="sub">The bridge connects one wired device on one side to your Wi-Fi network on the other.</p>
+      <div class="grid">
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.6a10 10 0 0 1 14 0M8.5 16.2a5 5 0 0 1 7 0"/><circle cx="12" cy="20" r="1"/></svg></div>
+          <h3>Wi-Fi to Ethernet</h3>
+          <p>The bridge joins your Wi-Fi network as a client and forwards traffic to and from the device plugged into its Ethernet port.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
+          <h3>Same network, same addresses</h3>
+          <p>The wired device gets its IP address from your router, and other devices on your network can reach it like any other client.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M21 3v6h-6"/><path d="M21 3l-9 9"/></svg></div>
+          <h3>Web setup and updates</h3>
+          <p>Set up Wi-Fi from your phone or laptop, check the bridge's status, and install firmware updates from your browser without a cable.</p>
+        </div>
+      </div>
+      <div class="diagram" aria-label="Wired device connects by Ethernet to WiFi Bridge, which connects by Wi-Fi to your router">
+        <span class="node">Wired device</span>
+        <span class="link">— Ethernet —</span>
+        <span class="node hl">WiFi Bridge</span>
+        <span class="link">— Wi-Fi —</span>
+        <span class="node">Your router</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="boards">
+    <div class="wrap">
+      <h2>Supported boards</h2>
+      <p class="sub">One firmware image runs on all of these boards. It starts with the WT32-ETH01 Ethernet settings. To use a different board, choose it on the <strong>Ethernet</strong> tab of the bridge's page after you install.</p>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Board</th><th>Ethernet PHY</th><th>How to connect for flashing</th></tr></thead>
+          <tbody>
+            <tr><td><strong>WT32-ETH01</strong><span class="tag">Default</span></td><td>LAN8720</td><td>No USB port. Use a 3.3 V USB-serial adapter and hold <code>IO0</code> low (see below).</td></tr>
+            <tr><td><strong>Olimex ESP32-POE / ESP32-POE-ISO</strong></td><td>LAN8720</td><td>Micro-USB; enters download mode automatically</td></tr>
+            <tr><td><strong>Olimex ESP32-Gateway</strong></td><td>LAN8720</td><td>Micro-USB; enters download mode automatically</td></tr>
+            <tr><td><strong>Espressif ESP32-Ethernet-Kit</strong></td><td>IP101</td><td>Micro-USB; enters download mode automatically</td></tr>
+            <tr><td><strong>wESP32</strong></td><td>LAN8720 / RTL8201</td><td>Programming header, with a USB-serial adapter that has auto-reset (for example, wESP32-Prog)</td></tr>
+            <tr><td><strong>LilyGO T-Internet-POE</strong></td><td>LAN8720</td><td>USB-serial adapter on the programming header</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2>Install</h2>
+      <p class="sub">You need a computer with desktop Chrome, Edge, or Opera, and a USB cable or USB-serial adapter. Installing takes a few minutes.</p>
+      <ol class="steps">
+        <li>
+          <h3>Connect the board</h3>
+          <p><strong>Boards with USB</strong> (Olimex, ESP32-Ethernet-Kit): Plug the board into your computer. The installer puts it into download mode for you.</p>
+          <div class="callout"><strong>Olimex ESP32-POE (non-ISO):</strong> Don't power the board from PoE while it's connected to your computer by USB. Only the ISO variant is electrically isolated.</div>
+          <p style="margin-top:14px"><strong>WT32-ETH01</strong> has no USB port. Connect a USB-serial adapter set to 3.3 V logic:</p>
+          <div class="table-card wiring">
+            <table>
+              <thead><tr><th>Adapter</th><th>WT32-ETH01</th></tr></thead>
+              <tbody>
+                <tr><td>TX</td><td><code>RX0</code></td></tr>
+                <tr><td>RX</td><td><code>TX0</code></td></tr>
+                <tr><td>GND</td><td><code>GND</code></td></tr>
+                <tr><td>5V</td><td><code>5V</code> (or 3.3 V to <code>3V3</code>, if the adapter can supply 500 mA)</td></tr>
+                <tr><td>GND (jumper)</td><td><code>IO0</code>, held to GND while the board starts or resets</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>The ESP32 enters its bootloader only if <code>IO0</code> is low at reset. Connect <code>IO0</code> to <code>GND</code>, and then turn on the board (or briefly connect <code>EN</code> to <code>GND</code>). Leave the jumper in place until the installation finishes.</p>
+        </li>
+        <li>
+          <h3>Click Install</h3>
+          <p>At the top of this page, click <strong>Install WiFi Bridge</strong> and choose the serial port (often <em>CP2102</em>, <em>CH340</em>, or <em>FT232</em>). If the port isn't listed, install the driver for your adapter. On Linux, add your user to the <code>dialout</code> group.</p>
+        </li>
+        <li>
+          <h3>Erase and install</h3>
+          <p>On a first install, or when you replace other firmware, select <strong>Erase device</strong>. This removes old settings that could interfere with the bridge. Installing takes about a minute.</p>
+        </li>
+        <li>
+          <h3>Restart the board</h3>
+          <p>On a WT32-ETH01, remove the <code>IO0</code> jumper and turn the board off and on again (or briefly connect <code>EN</code> to <code>GND</code>). Boards with USB restart automatically.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="setup">
+    <div class="wrap">
+      <h2>Set up the bridge</h2>
+      <p class="sub">If you didn't enter your Wi-Fi network in the installer, connect to the bridge in one of these ways.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>Over Wi-Fi</h3>
+          <p>From a phone or laptop, join the setup network <code>wifi-bridge-xxxxxx</code>. The suffix comes from the board's MAC address (its hardware address). The setup page opens automatically. If it doesn't, go to <a href="http://192.168.4.1/">http://192.168.4.1</a>.</p>
+        </div>
+        <div class="card">
+          <h3>Over Ethernet</h3>
+          <p>Plug a computer into the board's Ethernet port. The computer gets an address automatically. To open the same setup page, go to <a href="http://192.168.5.1/">http://192.168.5.1</a>.</p>
+        </div>
+        <div class="card">
+          <h3>Then</h3>
+          <p>Choose your Wi-Fi network, enter its password, and accept the suggested management address: the fixed IP address of the bridge's page. If your board isn't a WT32-ETH01, choose it on the <strong>Ethernet</strong> tab afterward. Plug in the wired device, and it appears on your network.</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:34px">Update and troubleshoot</h3>
+      <details>
+        <summary>Which file should I use?</summary>
+        <ul>
+          <li><code>wifi-bridge-&lt;version&gt;.ota.bin</code>: The application only. Use this file for firmware updates. Install it on the <strong>Firmware</strong> tab of the bridge's page, or from the safeboot firmware.</li>
+          <li><code>wifi-bridge-&lt;version&gt;.safeboot.bin</code>: The safeboot firmware, a small recovery firmware for boards with a single firmware slot. Install it once on the <strong>Firmware</strong> tab of the bridge's page.</li>
+          <li><code>wifi-bridge-&lt;version&gt;.factory.bin</code>: The complete image (bootloader, partition table, and application), flashed at offset <code>0x0</code> over serial. This page installs it for you.</li>
+          <li><code>wifi-bridge-&lt;version&gt;.elf</code> (on the GitHub release): Debug symbols for decoding crash backtraces.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>Install from the command line</summary>
+        <p>Install <a href="https://github.com/espressif/esptool">esptool</a>, put the board in download mode, and run:</p>
+        <p><code>esptool.py --chip esp32 write_flash 0x0 wifi-bridge-&lt;version&gt;.factory.bin</code></p>
+        <p>To start from an empty flash, run <code>erase_flash</code> as a separate command first.</p>
+      </details>
+      <details>
+        <summary>The installer can't connect to the board</summary>
+        <ul>
+          <li>Check that TX and RX are crossed: adapter TX to board <code>RX0</code>.</li>
+          <li>WT32-ETH01: Make sure that <code>IO0</code> was connected to <code>GND</code> <em>before</em> the reset, and that the adapter uses 3.3 V logic.</li>
+          <li>Close other programs that use the port, such as a serial monitor or another browser tab.</li>
+          <li>Try a shorter cable or a different USB port. Power the board from 5 V instead of the adapter's 3.3 V pin.</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>WiFi Bridge is open source and licensed under the Apache License 2.0.</span>
+    <span><a href="#" data-link="repo">Source</a> · <a href="#" data-link="releases">All releases</a> · <a href="#" data-link="issues">Report a problem</a></span>
+  </div>
+</footer>
+
+<script>
+  "use strict";
+  (function () {
+    const REPO = "https://github.com/imduffy15/wifi-bridge";
+    const links = {
+      repo: REPO,
+      releases: REPO + "/releases",
+      issues: REPO + "/issues",
+      release: REPO + "/releases",
+      ota: null,
+    };
+
+    function applyLinks() {
+      document.querySelectorAll("[data-link]").forEach(function (a) {
+        const href = links[a.dataset.link];
+        if (href) {
+          a.href = href;
+          a.hidden = false;
+        } else {
+          a.hidden = true;
+        }
+      });
+    }
+
+    function setBadge(text, ok) {
+      document.getElementById("version-text").textContent = text;
+      document.getElementById("version-badge").classList.toggle("pending", !ok);
+    }
+
+    function noRelease(message) {
+      setBadge(message, false);
+      document.getElementById("install-btn").disabled = true;
+      document.getElementById("sums-link").hidden = true;
+      applyLinks();
+    }
+
+    applyLinks();
+
+    fetch("manifest.json", { cache: "no-cache" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (m) {
+        const version = String(m.version || "");
+        if (!/^\d+\.\d+\.\d+/.test(version)) {
+          noRelease("No firmware release is available yet");
+          return;
+        }
+        const tag = "v" + version;
+        links.release = REPO + "/releases/tag/" + encodeURIComponent(tag);
+        links.ota = "firmware/wifi-bridge-" + version + ".ota.bin";
+        document.getElementById("release-link").textContent = "Release notes for " + tag;
+        document.getElementById("install-label").textContent = "Install WiFi Bridge " + version;
+        document.getElementById("install-btn").disabled = false;
+        setBadge("Firmware " + version + " · ESP32", true);
+        applyLinks();
+      })
+      .catch(function (e) {
+        noRelease("Couldn't load firmware information (" + e.message + ")");
+      });
+  })();
+</script>
+</body>
+</html>

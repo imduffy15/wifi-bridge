@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# Safeboot layout, 4 MB flash: safeboot firmware in the factory slot, WiFi Bridge in the single app slot.
+# The offsets match Tasmota's 4 MB safeboot layout, so boards running it can be updated in place.
+# Name,    Type, SubType,  Offset,   Size
+nvs,       data, nvs,      0x9000,   0x5000
+otadata,   data, ota,      0xe000,   0x2000
+safeboot,  app,  factory,  0x10000,  0xC0000
+app0,      app,  ota_0,    0xD0000,  0x2D0000
+spiffs,    data, spiffs,   0x3A0000, 0x60000

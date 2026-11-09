@@ -1,0 +1,152 @@
+# SPDX-License-Identifier: Apache-2.0
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  firmware:
+    name: Build firmware
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.4
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mark workspace as safe for git
+        # The container runs as root on a checkout owned by the runner user.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Cache managed components
+        uses: actions/cache@v4
+        with:
+          path: managed_components
+          key: managed-components-idf5.4-${{ hashFiles('main/idf_component.yml', 'dependencies.lock') }}
+          restore-keys: managed-components-idf5.4-
+
+      - name: Build
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          idf.py build
+          idf.py -C safeboot -B "$PWD/build-safeboot" -D SDKCONFIG="$PWD/build-safeboot/sdkconfig" build
+
+      - name: Package
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          tools/package.sh dist
+          echo "VERSION=$(tr -d ' \t\r\n' < version.txt)" >> "$GITHUB_ENV"
+
+      - name: Size report
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          {
+            echo "## Firmware ${VERSION} (${GITHUB_SHA::7})"
+            echo
+            echo "| File | Bytes |"
+            echo "|---|---:|"
+            for f in dist/*.bin; do
+              echo "| \`$(basename "$f")\` | $(stat -c %s "$f") |"
+            done
+            echo
+            echo "### idf.py size"
+            echo
+            echo '```'
+            idf.py size
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: wifi-bridge-${{ env.VERSION }}-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+
+  qemu:
+    name: End-to-end tests (QEMU)
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.4
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Cache managed components
+        uses: actions/cache@v4
+        with:
+          path: managed_components
+          key: managed-components-idf5.4-${{ hashFiles('main/idf_component.yml', 'dependencies.lock') }}
+          restore-keys: managed-components-idf5.4-
+
+      - name: Build QEMU variant
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          tools/qemu-build.sh
+
+      - name: Run tests
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          python3 tools/qemu_test.py
+          python3 tools/qemu_safeboot_test.py
+          python3 tools/qemu_improv_test.py
+
+      - name: Upload serial log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-serial-log-${{ github.sha }}
+          path: build-qemu/qemu-*serial.log
+          if-no-files-found: ignore
+
+  lint:
+    name: Lint web UI and scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check inline JavaScript
+        run: node tools/check-inline-js.mjs main/web/index.html safeboot/main/index.html web-installer/index.html
+
+      - name: Check manifest template
+        run: node -e 'JSON.parse(require("fs").readFileSync("web-installer/manifest.json", "utf8"))'
+
+      - name: ShellCheck
+        # shellcheck is preinstalled on the ubuntu-latest runner image. Info/style findings
+        # (e.g. SC2317 false positives on trap handlers) are not treated as failures.
+        run: shellcheck --version && shellcheck --severity=warning tools/*.sh
+
+  browser:
+    name: Browser interaction tests
+    # Playwright 1.58 has no browser builds for Ubuntu 26.04 (ubuntu-latest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test

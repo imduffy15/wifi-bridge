@@ -1,0 +1,9 @@
+{
+  "name": "wifi-bridge-ui-checks",
+  "private": true,
+  "scripts": {
+    "test": "node tools/ui_test.mjs",
+    "lint": "node tools/check-inline-js.mjs main/web/index.html safeboot/main/index.html web-installer/index.html"
+  },
+  "devDependencies": {"playwright": "1.58.2"}
+}

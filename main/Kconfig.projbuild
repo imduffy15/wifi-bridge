@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: Apache-2.0
+menu "WiFi Bridge"
+
+    config WB_DEFAULT_BOARD
+        string "Default Ethernet board (changeable at runtime)"
+        default "wt32-eth01"
+        help
+            One of: wt32-eth01, olimex-poe, olimex-gateway, esp32-eth-kit, wesp32, wesp32-lan8720,
+            lilygo-poe, custom. Used until a board is chosen in the web UI.
+
+    config WB_HOSTNAME_PREFIX
+        string "Hostname prefix (the last 3 MAC bytes are appended)"
+        default "wifi-bridge"
+
+    config WB_DEFAULT_LED_PIN
+        int "Default status LED GPIO (-1 = none)"
+        default -1
+
+    config WB_DEFAULT_BUTTON_PIN
+        int "Default button GPIO (-1 = none)"
+        default -1
+
+    menu "Preset settings (optional)"
+        comment "Defaults for unattended installs; also restored by a factory reset. Leave empty for setup mode."
+        config WB_PRESET_SSID
+            string "Wi-Fi SSID"
+            default ""
+        config WB_PRESET_PASSWORD
+            string "Wi-Fi password"
+            default ""
+        config WB_PRESET_IP
+            string "Management IP address"
+            default ""
+        config WB_PRESET_NETMASK
+            string "Management netmask"
+            default "255.255.255.0"
+        config WB_PRESET_GATEWAY
+            string "Gateway"
+            default ""
+        config WB_PRESET_DNS
+            string "DNS server (empty = gateway)"
+            default ""
+        config WB_PRESET_ADMIN_PASSWORD
+            string "Web admin password"
+            default ""
+        config WB_PRESET_HOSTNAME
+            string "Hostname (empty = prefix + MAC)"
+            default ""
+    endmenu
+
+    config WB_QEMU
+        bool "QEMU test build (OpenCores Ethernet, no Wi-Fi)"
+        default n
+        select ETH_USE_OPENETH
+        help
+            For automated tests in QEMU only: the wired port uses the emulated OpenCores MAC and
+            Wi-Fi is not started. See tools/qemu-build.sh and tools/qemu_test.py.
+
+endmenu

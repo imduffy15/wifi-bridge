@@ -1,0 +1,703 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232450b8'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 13a14 14 0 0 1 20 0M10 17.5a8.5 8.5 0 0 1 12 0'/%3E%3C/g%3E%3Crect x='11' y='22' width='10' height='4' rx='1.2' fill='%23fff'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#2450b8">
+<meta name="color-scheme" content="light dark">
+<title>WiFi Bridge</title>
+<style>
+/* Front-panel look: quiet enclosure grey, status shown like hardware LEDs, one link diagram as the focal point */
+:root{--bg:#edf0ee;--sf:#fff;--fg:#16201c;--mu:#5b6763;--bd:#cdd5d1;--ac:#2450b8;--acf:#fff;--ok:#188a43;--warn:#a86400;--err:#c22d2d;--in:#fff;--wbg:#fbf1dc;--hl:#e4e9f7;
+  --disp:Bahnschrift,"DIN Alternate","DIN Next","D-DIN",system-ui,sans-serif;--body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#101513;--sf:#18201d;--fg:#e4eae7;--mu:#97a39e;--bd:#2c3733;--ac:#86a6f2;--acf:#0b1430;--ok:#4cc276;--warn:#e0a743;--err:#ff7f73;--in:#121815;--wbg:#33290f;--hl:#1d2740}}
+*{box-sizing:border-box}
+html{scroll-padding-top:120px;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;font:15px/1.5 var(--body);background:var(--bg);color:var(--fg);font-variant-numeric:tabular-nums}
+a{color:var(--ac)}
+h1,h2,.disp{font-family:var(--disp);font-weight:650;letter-spacing:.005em}
+h2{font-size:18px;margin:0 0 12px;display:flex;align-items:center;gap:10px}
+h3{font-size:14px;font-weight:650;color:var(--fg);margin:26px 0 2px;grid-column:1/-1;padding-top:14px;border-top:1px solid var(--bd)}
+h3:first-child{margin-top:0;padding-top:0;border:0}
+p{margin:0 0 12px}
+.top{position:sticky;top:0;z-index:5;background:var(--sf);border-bottom:1px solid var(--bd)}
+header{display:flex;align-items:center;gap:12px;padding:10px max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left));max-width:1080px;margin:0 auto}
+header svg{flex:none;color:var(--ac)}
+h1{font-size:19px;margin:0;line-height:1.15;overflow-wrap:anywhere}
+.sub{color:var(--mu);font-size:13px;overflow-wrap:anywhere}
+/* status LED + text (header and section headings) */
+.led{display:inline-flex;align-items:center;gap:7px;font:600 13px/1.2 var(--body);white-space:nowrap}
+.led:before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 22%,transparent)}
+.led.big{margin-left:auto;font-size:13.5px}
+h2 .led{font-size:12.5px;margin-left:auto}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:var(--err)}.mu{color:var(--mu)}
+nav{display:flex;overflow-x:auto;gap:4px;padding:0 10px;max-width:1080px;margin:0 auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:0;border-bottom:3px solid transparent;border-radius:0;color:var(--mu);padding:9px 10px 8px;min-height:44px;font-weight:600;white-space:nowrap}
+nav button:hover{color:var(--fg)}
+nav button[aria-selected=true]{color:var(--fg);border-color:var(--ac)}
+main{max-width:1080px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+.banner{background:var(--wbg);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner span{flex:1;min-width:180px}
+/* panels: a surface with a hairline; settings forms are one column */
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:18px;min-width:0}
+.card+.card{margin-top:16px}
+form.cfg,.narrow{max-width:720px}
+fieldset{border:0;padding:0;margin:0;min-width:0}
+/* dashboard: the link diagram, then plain detail columns */
+.path{display:grid;grid-template-columns:1fr minmax(48px,1.1fr) 1fr minmax(48px,1.1fr) 1fr;align-items:center;background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:22px 18px;margin-bottom:22px}
+.node{text-align:center;min-width:0}
+.node svg{display:block;margin:0 auto 8px;color:var(--mu)}
+.node.up svg{color:var(--fg)}
+.node b{display:block;font:650 16px/1.25 var(--disp);overflow-wrap:anywhere}
+.node small{display:block;color:var(--mu);font-size:13px;overflow-wrap:anywhere}
+.node .led{margin-top:6px}
+.wire{position:relative;height:42px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;font-size:12px;color:var(--mu);text-align:center}
+.wire:before{content:"";position:absolute;left:0;right:0;top:50%;border-top:3px dashed var(--bd);z-index:0}
+.wire.up:before{border-top-style:solid;border-color:var(--ok)}
+.wire span{position:relative;z-index:1;background:var(--sf);padding:0 6px;line-height:1.3}
+.wire span:first-child{transform:translateY(-12px)}.wire span:last-child{transform:translateY(12px)}
+.details{display:grid;gap:0 32px;grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+.details section{border-top:2px solid var(--fg);padding:12px 0 20px}
+.details h2{font-size:16px;margin-bottom:8px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14px}
+dt{color:var(--mu)}dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.bar{height:6px;background:var(--bd);border-radius:3px;overflow:hidden;margin:4px 0 10px}
+.bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
+.bar.big{height:10px;margin:12px 0 4px}.bar.big i{background:var(--ac)}
+/* forms */
+.fs{display:grid;gap:14px 18px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.fld label{display:block;font-weight:600;font-size:14px;margin-bottom:5px}
+.fld small,.hint{display:block;color:var(--mu);font-size:13px;margin-top:4px}
+input,select{width:100%;font:inherit;font-size:16px;padding:9px 11px;border:1px solid var(--bd);border-radius:8px;background:var(--in);color:var(--fg);min-height:44px}
+input[type=file]{padding:8px;font-size:15px}
+input:disabled,select:disabled{opacity:.55}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+input:user-invalid{border-color:var(--err)}
+.ck{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;align-self:end;padding-bottom:8px}
+.ck input{width:20px;height:20px;min-height:0;margin:1px 0 0;flex:none;accent-color:var(--ac)}
+.ck label{font-weight:500;flex:1;font-size:15px}.ck small{flex-basis:100%;margin:0 0 0 30px}
+.tog .sw{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.tog .sw input{width:20px;height:20px;min-height:0;margin:0;flex:none;accent-color:var(--ac)}
+.tog .sw label{margin:0;font-weight:600}
+.tog .ig{align-items:center}.tog .unit{color:var(--mu);font-size:14px;white-space:nowrap}
+button,.btn{font:inherit;font-weight:600;padding:9px 16px;min-height:44px;border-radius:8px;border:1px solid var(--ac);background:var(--ac);color:var(--acf);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.sec{background:transparent;color:var(--ac)}
+.sec:hover{background:var(--hl)}
+.dng{background:var(--err);border-color:var(--err);color:#fff}
+.lnk{background:none;border:0;color:var(--ac);padding:4px;min-height:0;text-decoration:underline;font-weight:500}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px}
+.ig{display:flex;gap:8px}.ig input,.ig select{flex:1;min-width:0}.ig button{padding:9px 12px}
+.toasts{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:40;width:min(92vw,440px)}
+.toast{background:var(--fg);color:var(--bg);padding:11px 14px;border-radius:8px;border-left:5px solid var(--mu);box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.toast.k-ok{border-color:#3fb96b}.toast.k-err{border-color:#f0645a}
+.ov{position:fixed;inset:0;background:rgba(6,12,10,.55);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
+.ov>div{background:var(--sf);border-radius:12px;padding:22px;max-width:480px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.ov .row{justify-content:flex-end}
+.spin{width:22px;height:22px;border:3px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:sp 1s linear infinite;display:inline-block;flex:none;vertical-align:middle}
+.spin.big{width:44px;height:44px;border-width:4px;display:block;margin:4px auto 16px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation-duration:3s}.bar i{transition:none}}
+.c{text-align:center}
+.nets{border:1px solid var(--bd);border-radius:10px;overflow:hidden auto;max-height:55vh;background:var(--sf)}
+.net{width:100%;background:none;color:var(--fg);border:0;border-bottom:1px solid var(--bd);border-radius:0;justify-content:flex-start;text-align:left;padding:12px;font-weight:500;gap:12px;min-height:52px}
+.net:last-child{border-bottom:0}.net:hover{background:var(--hl)}
+.net>span:nth-child(2){flex:1;min-width:0}.net b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.net small{color:var(--mu);font-weight:400}.net svg{display:block}
+.nets .msg{padding:16px;color:var(--mu);display:flex;gap:10px;align-items:center}
+.log{background:#0f1412;color:#cfd8d3;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;height:58vh;overflow:auto;padding:12px;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.log .E{color:#ff8a80}.log .W{color:#f0c060}.log .D{color:#8d9a94}.log .C{color:#8fb3ff;font-weight:700}.log .R{color:#b5ccff}.log .X{color:#d9b3ff}
+.steps{display:flex;gap:6px;margin-bottom:18px}.steps i{flex:1;height:4px;border-radius:2px;background:var(--bd)}.steps i.on{background:var(--ac)}
+.wiz{max-width:560px;margin:0 auto}
+.note{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;font-size:14px;margin:0 0 14px}
+.note p:last-child{margin:0}
+.big a{font-size:17px;font-weight:600;overflow-wrap:anywhere}
+ol{padding-left:20px}li{margin-bottom:8px}
+[hidden]{display:none!important}
+@media(max-width:640px){
+  .path{grid-template-columns:1fr;padding:16px;gap:0;justify-items:stretch}
+  .node{display:grid;grid-template-columns:40px 1fr auto;align-items:center;text-align:left;gap:0 12px}
+  .node svg{margin:0;grid-row:span 2}.node .led{grid-row:1/span 2;grid-column:3;margin:0}
+  .wire{height:auto;min-height:44px;flex-direction:row;justify-content:flex-start;gap:10px;padding-left:52px}
+  .wire:before{left:19px;right:auto;top:0;bottom:0;border-top:0;border-left:3px dashed var(--bd)}
+  .wire.up:before{border-left-style:solid;border-color:var(--ok)}
+  .wire span:first-child,.wire span:last-child{transform:none;padding:0}
+  h1{font-size:17px}
+}
+@media(min-width:800px){main{padding-top:24px}}
+</style>
+</head>
+<body>
+<div class="top">
+<header>
+<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><rect x="7" y="19" width="10" height="3" rx="1"/></svg>
+<div><h1 id="hName">WiFi Bridge</h1><div class="sub" id="hSub">Connecting…</div></div>
+<span class="led big mu" id="pill" role="status">…</span>
+</header>
+<nav id="nav" role="tablist" aria-label="Sections" hidden></nav>
+</div>
+<main>
+<div class="banner" id="rb" hidden><span>Saved settings take effect after a restart.</span><button id="rbBtn">Restart now</button></div>
+<div class="banner" id="offline" hidden role="alert"><span id="offMsg">The bridge isn’t responding. Retrying…</span><span class="spin"></span></div>
+<section id="wiz" class="wiz" hidden></section>
+<div id="app" hidden>
+<section id="t-dash" role="tabpanel"><div id="setupHint" class="banner" hidden><span>The bridge is in <b>setup mode</b> and isn’t bridging yet.</span><button id="wizBtn">Start setup</button></div><div id="dash"></div></section>
+<section id="t-wifi" role="tabpanel" hidden></section>
+<section id="t-net" role="tabpanel" hidden></section>
+<section id="t-eth" role="tabpanel" hidden></section>
+<section id="t-mqtt" role="tabpanel" hidden></section>
+<section id="t-sys" role="tabpanel" hidden></section>
+<section id="t-fw" role="tabpanel" hidden></section>
+<section id="t-con" role="tabpanel" hidden>
+<div class="card">
+<div class="row" style="margin:0 0 10px"><h2 style="margin:0;flex:1">Console</h2><label class="ck" style="padding:0"><input type="checkbox" id="auto" checked> Autoscroll</label><button class="sec" id="logClr">Clear</button></div>
+<pre class="log" id="log" aria-live="off" tabindex="0"></pre>
+<form id="cmdF" class="ig" style="margin-top:10px" autocomplete="off"><input id="cmd" aria-label="Command" placeholder="Command, for example Status 0 (type Help for a list)" spellcheck="false" autocapitalize="off"><button>Send</button></form>
+<small class="hint">↑/↓ browse command history. Commands are the same as on the serial console and MQTT.</small>
+</div>
+</section>
+<section id="t-mnt" role="tabpanel" hidden>
+<div class="card"><h2>Restart</h2><p class="mu">Restarting interrupts the bridge for about 10 seconds.</p>
+<div class="row"><button id="rbN">Restart</button><button class="sec" id="rbS">Restart into setup mode</button></div>
+<small class="hint">Setup mode starts the setup network once and keeps your settings.</small></div>
+<div class="card"><h2>Backup &amp; restore</h2><p class="mu">The backup file contains all settings. Passwords are included only when an admin password is set; keep that file safe.</p>
+<div class="row"><a class="btn" id="bkp" href="api/config/backup" download>Download backup</a></div>
+<div class="fld" style="margin-top:16px"><label for="rsF">Restore from file</label><div class="ig"><input type="file" id="rsF" accept=".json,application/json"><button class="sec" id="rsB">Restore</button></div><small>Applies the backed-up settings and restarts. Passwords omitted from the backup are kept.</small></div></div>
+<div class="card"><h2>Crash report</h2><p class="mu" id="crT">No crash recorded.</p>
+<div class="row" id="crR" hidden><a class="btn sec" href="api/coredump" download>Download report</a><button class="sec" id="crE">Delete report</button></div>
+<small class="hint">Decode a report with <code>idf.py coredump-info</code> and the release's <code>.elf</code> file.</small></div>
+<div class="card"><h2>Factory reset</h2><p class="mu">Resets this firmware's settings and restarts into setup mode. Reconnect to the setup network afterward.</p>
+<div class="row"><button class="dng" id="fW">Reset Wi-Fi settings</button><button class="dng" id="fA">Reset everything</button></div></div>
+</section>
+</div>
+</main>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<div class="ov" id="ov" hidden><div role="dialog" aria-modal="true" aria-labelledby="ovT" id="ovB"></div></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const get=(o,k)=>k.split('.').reduce((a,b)=>a==null?a:a[b],o);
+const IPP=String.raw`((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)`;
+const MACP=String.raw`([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}`;
+const HOSTP=String.raw`[A-Za-z0-9]([A-Za-z0-9\-]{0,30}[A-Za-z0-9])?`;
+let S=null,C=null,BOARDS=[],tab='dash',prevF=null,rates={},busy=false,authFail=0;
+
+// ---------- API ----------
+async function api(p,body,o={}){
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),o.to||10000);
+  const init={credentials:'same-origin',cache:'no-store',signal:ac.signal};
+  if(body!==undefined){init.method='POST';init.headers={'Content-Type':'application/json'};init.body=typeof body=='string'?body:JSON.stringify(body)}
+  let r,j=null;
+  try{r=await fetch(p,init);j=await r.json().catch(()=>null)}
+  catch(e){const x=new Error('The bridge isn’t reachable');x.status=0;throw x}
+  finally{clearTimeout(t)}
+  if(!r.ok||(j&&j.ok===false)){
+    const x=new Error(r.status==401?'Authentication required: reload the page and log in as "admin"':(j&&j.error)||'Request failed (HTTP '+r.status+')');
+    x.status=r.status;throw x}
+  return j;
+}
+
+// ---------- formatting ----------
+function dur(s){if(s==null)return'–';s=Math.floor(s);const d=s/86400|0,h=s/3600%24|0,m=s/60%60|0;
+  return d?d+'d '+h+'h '+m+'m':h?h+'h '+m+'m':m?m+'m '+s%60+'s':s+'s'}
+const num=n=>n==null?'–':Number(n).toLocaleString();
+const kb=n=>n==null?'–':(n/1024).toFixed(1)+' KB';
+const v=x=>x==null||x===''?'<span class="mu">–</span>':esc(x);
+const kv=rows=>'<dl>'+rows.filter(Boolean).map(r=>'<dt>'+r[0]+'</dt><dd>'+r[1]+'</dd>').join('')+'</dl>';
+function bars(q,w=20){let s='';for(let i=0;i<4;i++)s+=`<rect x="${i*5+1}" y="${14-i*4}" width="3.4" height="${4+i*4}" rx="1" fill="currentColor" opacity="${q>i*25+5?1:.25}"/>`;
+  return `<svg width="${w}" height="${w*.9}" viewBox="0 0 21 19" aria-hidden="true">${s}</svg>`}
+const LOCK='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-label="secured"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const qcol=q=>q>=60?'var(--ok)':q>=35?'var(--warn)':'var(--err)';
+const qbar=q=>`<div class="bar" role="meter" aria-label="Signal quality" aria-valuenow="${q|0}" aria-valuemin="0" aria-valuemax="100"><i style="width:${q|0}%;background:${qcol(q)}"></i></div>`;
+const pill=(c,t)=>`<span class="led ${c}">${esc(t)}</span>`;
+
+// ---------- toasts & dialogs ----------
+function toast(msg,k=''){const d=document.createElement('div');d.className='toast k-'+k;d.textContent=msg;$('toasts').append(d);setTimeout(()=>d.remove(),k=='err'?7000:4000)}
+let lastFocus=null;
+function modal(html){lastFocus=document.activeElement;modal.cancel=null;$('ovB').innerHTML=html;$('ov').hidden=false;document.querySelector('main').inert=true;document.querySelector('.top').inert=true;const f=$('ovB').querySelector('[autofocus],button,input');f&&f.focus();return $('ovB')}
+function closeModal(){$('ov').hidden=true;$('ovB').innerHTML='';document.querySelector('main').inert=false;document.querySelector('.top').inert=false;modal.cancel=null;lastFocus&&lastFocus.focus&&lastFocus.focus()}
+function ask(title,text,ok='OK',danger){return new Promise(res=>{
+  const b=modal(`<h2 id="ovT">${title}</h2><p>${text}</p><div class="row"><button class="sec" data-r="0">Cancel</button><button class="${danger?'dng':''}" data-r="1">${ok}</button></div>`);
+  b.querySelector('[data-r="0"]').focus();
+  b.onclick=e=>{const r=e.target.closest('[data-r]');if(r){b.onclick=null;closeModal();res(r.dataset.r=='1')}};
+  modal.cancel=()=>{b.onclick=null;closeModal();res(false)}})}
+document.addEventListener('keydown',e=>{
+  if($('ov').hidden)return;
+  if(e.key=='Escape'&&modal.cancel){e.preventDefault();modal.cancel()}
+  if(e.key=='Tab'){const items=$$('button:not(:disabled),input:not(:disabled),a[href],[tabindex="0"]',$('ovB')).filter(el=>el.getClientRects().length);
+    const first=items[0],last=items[items.length-1];
+    if(!first){e.preventDefault();return}
+    if(e.shiftKey&&document.activeElement==first){e.preventDefault();last.focus()}
+    else if(!e.shiftKey&&document.activeElement==last){e.preventDefault();first.focus()}}
+});
+
+// Wait for the device to come back after a restart, then reload the page.
+async function waitRestart(msg,note=''){
+  busy=true;modal.cancel=null;
+  modal(`<div class="c"><span class="spin big"></span><h2 id="ovT">${msg}</h2><p class="mu" id="wMsg">Waiting for the bridge to restart…</p>${note?'<div class="note">'+note+'</div>':''}<button class="sec" onclick="location.reload()">Reload now</button></div>`);
+  const up0=S?S.device.uptime_s+2:1e9,bc=S&&S.device.boot_count,t0=Date.now();let down=false;
+  await sleep(3000);
+  for(;;){
+    try{const s=await api('api/status',undefined,{to:3000});if(s.mode=='safeboot'){down=true;$('wMsg').textContent='Installing in safeboot…'}else if(down||s.device.boot_count!=bc||s.device.uptime_s<up0+(Date.now()-t0)/1000-3){$('wMsg').textContent='Back online, reloading…';await sleep(500);location.reload();return}}
+    catch(e){if(e.status==401||(down&&e.status>0)){location.reload();return}if(!e.status)down=true}
+    const el=$('wMsg');if(el&&Date.now()-t0>90000)el.textContent='Still waiting. If the bridge changed its address, open the new address instead.';
+    await sleep(1500)}
+}
+async function reboot(target,msg,note){try{await api('api/reboot',{target});waitRestart(msg||'Restarting…',note)}catch(e){toast(e.message,'err')}}
+const SETUP_NOTE=()=>`After the restart, connect to the Wi-Fi network <b>${esc(S?S.device.hostname:'wifi-bridge-…')}</b> and open <b>http://${esc(S&&S.wifi.ap_ip||'192.168.4.1')}/</b>, or plug a computer into the Ethernet port and open <b>http://192.168.5.1/</b>.`;
+
+// ---------- status polling ----------
+async function poll(){
+  if(busy){setTimeout(poll,2000);return}
+  try{onStatus(await api('api/status',undefined,{to:5000}));authFail=0}
+  catch(e){
+    if(e.status==401)authFail++;
+    setPill('err',e.status==401?'Login required':'Offline');
+    $('offMsg').textContent=e.status==401?e.message:'The bridge isn’t responding. Retrying…';
+    $('offline').hidden=busy;
+  }
+  setTimeout(poll,2000);
+}
+function setPill(c,t){const p=$('pill');p.className='led big '+c;p.textContent=t}
+function onStatus(s){
+  const now=Date.now();
+  if(prevF&&s.device.uptime_s>=S.device.uptime_s){const dt=(now-prevF.t)/1000;for(const k in s.frames)rates[k]=Math.max(0,(s.frames[k]-prevF.f[k])/dt)}
+  prevF={t:now,f:s.frames};S=s;
+  $('offline').hidden=true;
+  const d=s.device,w=s.wifi;
+  $('hName').textContent=d.name||'WiFi Bridge';document.title=(d.name||'WiFi Bridge')+' – '+d.hostname;
+  $('hSub').textContent=d.hostname+', firmware '+d.version;
+  if(d.safe_mode)setPill('err','Safe mode');else if(s.mode=='setup')setPill('warn','Setup mode');
+  else if(w.state=='connected')setPill('ok','Online');
+  else setPill(w.state=='connecting'?'warn':'err',w.state=='connecting'?'Connecting…':'Wi-Fi down');
+  $('rb').hidden=!d.reboot_required||busy||!$('wiz').hidden;
+  $('setupHint').hidden=s.mode!='setup';
+  $('setupHint').querySelector('span').innerHTML=d.safe_mode?'<b>Safe mode:</b> the firmware crashed repeatedly after starting, so only this page runs. Check the crash report under Maintenance, then update the firmware or fix the settings and restart.':'The bridge is in <b>setup mode</b> and isn’t bridging yet.';
+  crash();
+  if(tab=='dash'&&!$('app').hidden)renderDash();
+  if(tab=='fw'&&!$('app').hidden)fwInfo();
+}
+
+function crash(){const c=S&&S.device.last_crash;$('crR').hidden=!c;$('crT').textContent=c?'The device crashed in task "'+c.task+'" at '+c.pc+'. Backtrace: '+c.backtrace:'No crash recorded.'}
+// ---------- dashboard ----------
+const IC={
+  ap:'<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 11a10 10 0 0 1 14 0M8 14a6 6 0 0 1 8 0"/><circle cx="12" cy="17" r="1.3" fill="currentColor"/><rect x="3" y="3" width="18" height="18" rx="3" opacity=".35"/></svg>',
+  br:'<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 8a10 10 0 0 1 14 0M8.5 11a5 5 0 0 1 7 0"/><rect x="4" y="14" width="16" height="7" rx="1.6"/><path d="M8 17.5h2"/></svg>',
+  dev:'<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="11" rx="2"/><path d="M8 20h8M12 16v4"/></svg>'};
+const fr=x=>x==null?'–':x<10?x.toFixed(1):Math.round(x)+'';
+function renderDash(){
+  const s=S,d=s.device,w=s.wifi,e=s.ethernet,c=s.client||{},f=s.frames,m=s.mqtt;
+  const wc=w.state=='connected',eu=e.state=='up',setup=s.mode=='setup';
+  const ws={connected:'ok',connecting:'warn'}[w.state]||'err';
+  const wst={connected:'Connected',connecting:'Connecting',idle:'Not set up'}[w.state]||'Disconnected';
+  const rate=k=>`${num(f[k])} <span class="mu">${rates[k]!=null?'('+fr(rates[k])+'/s)':''}</span>`;
+  const cfgMac=C&&C.bridge&&C.bridge.client_mac;
+  const brS=d.safe_mode?['err','Safe mode']:setup?['warn','Setup mode']:wc&&eu?['ok','Bridging']:['warn','Waiting'];
+  const dvS=!eu?['err',e.state=='init_failed'?'Ethernet fault':'No cable']:c.mac?['ok','Online']:['warn','Link up'];
+  $('dash').innerHTML=
+  `<div class="path" role="group" aria-label="Connection path">
+    <div class="node ${wc?'up':''}">${IC.ap}<b>${wc?esc(w.ssid):'Wi-Fi network'}</b><small>${wc?w.quality+'% signal, '+w.rssi+' dBm':setup?'Choose a network in setup':'Looking for '+esc(w.ssid||'the network')}</small>${pill(ws,wst)}</div>
+    <div class="wire ${wc?'up':''}"><span>${wc?'channel '+w.channel:''}</span><span>${wc?w.rssi+" dBm":""}</span></div>
+    <div class="node up">${IC.br}<b>${esc(d.name||d.hostname)}</b><small>${esc(w.ip||d.hostname)}</small>${pill(brS[0],brS[1])}</div>
+    <div class="wire ${eu?'up':''}"><span>${eu?'→ '+fr(rates.wifi_to_wired||0)+' frames/s':''}</span><span>${eu?'← '+fr(rates.wired_to_wifi||0)+' frames/s':''}</span></div>
+    <div class="node ${eu&&c.mac?'up':''}">${IC.dev}<b>${c.ip?esc(c.ip):'Wired device'}</b><small>${c.mac?esc(c.mac):eu?'Waiting for traffic from the wired device':'Plug it into the Ethernet port'}</small>${pill(dvS[0],dvS[1])}</div>
+  </div>
+  <div class="details">
+  <section><h2>Wi-Fi ${pill(ws,wst)}</h2>${wc?qbar(w.quality):''}${kv([wc&&['Network',esc(w.ssid)],wc&&['Signal',w.quality+'% ('+w.rssi+' dBm)'],wc&&['Access point',v(w.bssid)+', channel '+w.channel],['Management address',v(w.ip)],['Netmask',v(w.netmask)],['Gateway',v(w.gateway)],['DNS',v(w.dns)],wc&&['Connected for',dur(w.connected_s)],['Disconnects',num(w.disconnects)+(w.last_reason?' <span class="mu">('+esc(w.last_reason)+')</span>':'')],['Setup network',w.ap_active?esc(w.ap_ssid)+' at '+esc(w.ap_ip)+', '+w.ap_clients+' client'+(w.ap_clients==1?'':'s'):'Off']])}</section>
+  <section><h2>Ethernet ${pill(eu?'ok':e.state=='pending'?'warn':'err',eu?'Link up':e.state=='pending'?'Starting':e.state=='init_failed'?'Fault':'No link')}</h2>${kv([['Link',eu?e.speed+' Mbps, '+esc(e.duplex)+' duplex':'–'],['Role',e.role=='setup'?'Setup page with DHCP server':'Bridge'],e.ip&&['Address',v(e.ip)],['Wired device',c.mac?v(c.mac)+(cfgMac?' <span class="mu">(fixed)</span>':''):'<span class="mu">Not seen yet</span>'],c.ip&&['Device address',v(c.ip)]])}</section>
+  <section><h2>Traffic</h2>${kv([['Wired to Wi-Fi',rate('wired_to_wifi')],['Wi-Fi to wired',rate('wifi_to_wired')],['To this bridge',rate('to_bridge')],['Wi-Fi send failures',rate('wifi_tx_fail')],['Dropped from Wi-Fi',rate('wifi_drop')],['Dropped from wired',rate('wired_drop')]])}</section>
+  <section><h2>Device</h2>${kv([['Hostname',v(d.hostname)],['Firmware',v(d.version)],['Uptime',dur(d.uptime_s)],['Time',v(d.time&&d.time.replace('T',' ').slice(0,19))],['Board',v(d.board)],['Chip',v(d.chip)],['CPU and flash',d.cpu_mhz+' MHz, '+d.flash_mb+' MB'],['Free memory',kb(d.free_heap)+' <span class="mu">(lowest '+kb(d.min_free_heap)+')</span>'],['Last restart',v(d.reset_reason)],d.last_crash&&['Last crash','<span class="err">'+esc(d.last_crash.task)+' at '+esc(d.last_crash.pc)+'</span> <a href="api/coredump" download>report</a>'],['Restarts',num(d.boot_count)],['Wi-Fi MAC',v(d.mac_wifi)],['Ethernet MAC',v(d.mac_eth)]])}</section>
+  <section><h2>MQTT ${m.enabled?pill(m.connected?'ok':'err',m.connected?'Connected':'Disconnected'):pill('mu','Off')}</h2>${m.enabled?kv([['Broker',v(C&&C.mqtt.host?C.mqtt.host+':'+C.mqtt.port:null)],['Topic',v(C&&C.mqtt.topic)],['Home Assistant discovery',C?C.mqtt.discovery?'On':'Off':'–']]):'<p class="mu">Turn on MQTT in the MQTT tab to publish status and accept commands.</p>'}</section>
+  </div>`;
+}
+
+// ---------- config forms ----------
+// field: [key, label, type, opts]  types: t text, ip, n number, p secret, s select, sn numeric select, b checkbox
+function fld(k,l,t,o={}){
+  const id='f_'+k.replace('.','_'),h=o.h?`<small id="${id}_h">${o.h}</small>`:'',db=o.h?` aria-describedby="${id}_h"`:'';
+  const a=`id="${id}" data-k="${k}" data-t="${t}"${db} ${o.a||''}`;
+  if(t=='b')return `<div class="fld ck"><input type="checkbox" ${a}><label for="${id}">${l}</label>${h}</div>`;
+  if(o.tog){const g=o.tog;return `<div class="fld tog"><div class="sw"><input type="checkbox" id="${id}_on" data-tog="${id}"><label for="${id}_on">${l}</label></div><div class="ig"><input type="${t=='n'?'number':'text'}" ${t=='t'?'spellcheck="false" autocapitalize="off"':''} placeholder="${g.ph||''}" data-off="${esc(JSON.stringify(g.off))}" data-def="${esc(g.def)}" ${a}>${g.unit?`<span class="unit">${g.unit}</span>`:''}</div>${h}</div>`}
+  let i;
+  if(t=='s'||t=='sn')i=`<select ${a}>${o.o.map(x=>Array.isArray(x)?`<option value="${x[0]}">${x[1]}</option>`:`<option>${x}</option>`).join('')}</select>`;
+  else if(t=='p')i=`<div class="ig"><input type="password" autocomplete="new-password" ${a}><button type="button" class="sec" data-clr="${id}" hidden>Clear</button></div>`;
+  else{i=`<input type="${t=='n'?'number':'text'}" ${t=='ip'?`inputmode="decimal" pattern="${IPP}" title="IPv4 address, for example 192.168.1.250"`:''} ${t=='t'?'spellcheck="false" autocapitalize="off"':''} ${a}>`;
+    if(o.scan)i=`<div class="ig">${i}<button type="button" class="sec" data-scan="${id}">Scan</button></div>`}
+  return `<div class="fld"><label for="${id}">${l}</label>${i}${h}</div>`;
+}
+// pins the firmware accepts for the LED, button and PHY power (others are flash, serial, Ethernet or input-only)
+const PINS=[[-1,'Not connected']].concat([2,4,5,12,13,14,15,16,17,18,23,32,33].map(g=>[g,'GPIO'+g]));
+const TZ=[['UTC0','UTC'],['GMT0BST,M3.5.0/1,M10.5.0','London, Dublin, Lisbon'],['CET-1CEST,M3.5.0,M10.5.0/3','Central Europe (Berlin, Paris, Madrid)'],['EET-2EEST,M3.5.0/3,M10.5.0/4','Eastern Europe (Athens, Helsinki)'],['MSK-3','Moscow, Istanbul'],['EST5EDT,M3.2.0,M11.1.0','US Eastern'],['CST6CDT,M3.2.0,M11.1.0','US Central'],['MST7MDT,M3.2.0,M11.1.0','US Mountain'],['MST7','US Arizona'],['PST8PDT,M3.2.0,M11.1.0','US Pacific'],['<-03>3','Brazil (São Paulo), Argentina'],['IST-5:30','India'],['CST-8','China, Singapore, Perth'],['JST-9','Japan, Korea'],['AEST-10AEDT,M10.1.0,M4.1.0/3','Sydney, Melbourne'],['NZST-12NZDT,M9.5.0,M4.1.0/3','New Zealand']];
+const FORMS={
+ wifi:['Wi-Fi',[
+  '#Primary network',['wifi.ssid1','Network name (SSID)','t',{scan:1,a:'maxlength="32"'}],['wifi.password1','Password','p',{a:'maxlength="64"'}],
+  '#Secondary network (optional)',['wifi.ssid2','Network name (SSID)','t',{scan:1,a:'maxlength="32"',h:'Used when the primary network isn’t available.'}],['wifi.password2','Password','p',{a:'maxlength="64"'}],
+  '#Setup network',['wifi.ap_fallback_min','Start the setup network when Wi-Fi is lost','n',{a:'min="1" max="1440"',tog:{off:0,def:3,unit:'minutes without Wi-Fi'},h:'The bridge keeps trying to reconnect while it runs.'}],['wifi.ap_password','Access point password','p',{a:'pattern=".{8,63}" title="8 to 63 characters"',h:'Optional, 8 to 63 characters. Without a password, anyone nearby can join the setup network.'}],
+  '#Radio',['wifi.power_save','Power save','s',{o:[['none','Off (lowest latency, recommended)'],['min','Minimum'],['max','Maximum']]}],['wifi.tx_power','TX power (dBm)','n',{a:'min="2" max="20"',h:'2–20 dBm. Lower it if the board browns out.'}]]],
+ net:['Management address',[
+  ['network.ip','IP address','ip',{a:'required'}],['network.netmask','Netmask','ip',{a:'required'}],['network.gateway','Gateway','ip'],['network.dns','DNS server','ip',{a:'placeholder="Same as the gateway"'}]],
+  '<div class="note"><p>The bridge and the wired device share one MAC address on Wi-Fi, so DHCP leases go to the wired device. The web interface needs its <b>own static address</b> in the same subnet: pick one outside your router\'s DHCP range (or reserve it) so it is never handed out to anyone else.</p></div>'],
+ eth:['Ethernet',[
+  ['ethernet.board','Board','s',{o:[]}],['ethernet.phy','PHY chip','s',{o:['lan8720','ip101','rtl8201','dp83848','ksz80xx']}],['ethernet.addr','PHY address','n',{a:'min="0" max="31"'}],
+  ['ethernet.mdc','MDC pin','n',{a:'min="0" max="39"'}],['ethernet.mdio','MDIO pin','n',{a:'min="0" max="39"'}],
+  ['ethernet.clk_mode','RMII clock','s',{o:[['ext_gpio0','External, input on GPIO0'],['out_gpio0','Output on GPIO0'],['out_gpio16','Output on GPIO16'],['out_gpio17','Output on GPIO17']]}],
+  ['ethernet.power_pin','PHY power / reset pin','sn',{o:PINS}],
+  '#Wired client',['bridge.client_mac','Always bridge one specific device','t',{a:`pattern="${MACP}"`,tog:{off:'',def:'',ph:'MAC address, for example 02:22:33:44:55:66'},h:'Off: the bridge learns the wired device from its network traffic.'}]],
+  '<p class="mu" id="ethNote"></p>'],
+ mqtt:['MQTT',[
+  ['mqtt.enabled','Enable MQTT','b'],['mqtt.host','Broker host','t'],['mqtt.port','Port','n',{a:'min="1" max="65535"'}],['mqtt.user','User','t'],['mqtt.password','Password','p'],
+  ['mqtt.topic','Topic','t',{h:'Commands are accepted on cmnd/&lt;topic&gt;/&lt;Command&gt;.'}],['mqtt.tele_period','Publish telemetry regularly','n',{a:'min="10" max="3600"',tog:{off:0,def:300,unit:'seconds between reports'}}],
+  '#Home Assistant',['mqtt.discovery','Home Assistant discovery','b',{h:'Publish entities so Home Assistant adds the bridge automatically.'}],['mqtt.discovery_prefix','Discovery prefix','t']]],
+ sys:['System',[
+  '#Device',['device.name','Device name','t',{a:'maxlength="32"'}],['device.hostname','Hostname','t',{a:`required maxlength="32" pattern="${HOSTP}"`,h:'Letters, digits and hyphens. Also used for mDNS (&lt;hostname&gt;.local).'}],
+  ['admin.password','Admin password','p',{h:'Protects this web interface (user <b>admin</b>). Clear it to disable.'}],
+  '#Time',['time.ntp','NTP server','t'],['tzp','Time zone','s',{o:[['','Custom…']].concat(TZ)}],['time.tz','POSIX TZ string','t',{h:'For example CET-1CEST,M3.5.0,M10.5.0/3'}],
+  '#Logging',['syslog.host','Send logs to a syslog server','t',{tog:{off:'',def:'',ph:'Server name or address'}}],['syslog.port','Syslog port','n',{a:'min="1" max="65535"'}],['system.log_level','Log level','s',{o:[['error','Error'],['warn','Warning'],['info','Info'],['debug','Debug']]}],
+  '#Hardware',['system.cpu_mhz','CPU frequency','sn',{o:[[80,'80 MHz'],[160,'160 MHz'],[240,'240 MHz']]}],['system.led_pin','Status LED','sn',{o:PINS}],['system.led_inverted','LED is active low','b'],
+  ['system.button_pin','Button','sn',{o:PINS,h:'Hold 3 s for setup mode, 12 s to erase all settings.'}],['system.powercycle_reset','Power-cycle factory reset','b',{h:'Six quick power cycles reset all settings.'}]]]
+};
+function buildForms(){
+  for(const id in FORMS){const [title,fs,pre]=FORMS[id];
+    $('t-'+id).innerHTML=`<form class="card cfg" novalidate><h2>${title}</h2>${pre||''}<fieldset disabled><div class="fs">${fs.map(f=>typeof f=='string'?`<h3>${f.slice(1)}</h3>`:fld(...f)).join('')}</div><div class="row"><button>Save</button><button type="button" class="sec" data-undo>Undo changes</button></div></fieldset><p class="hint" data-feedback role="status">Loading settings…</p><button type="button" class="sec" data-retry hidden>Retry loading settings</button></form>`}
+  $$('form.cfg').forEach(f=>{
+    f.onsubmit=e=>{e.preventDefault();save(f)};
+    f.onclick=e=>{const t=e.target;
+      if(t.dataset.clr){const i=$(t.dataset.clr);i.value='';i.dataset.clr=1;i.placeholder='(will be cleared on save)';t.hidden=true}
+      if(t.dataset.scan)pickNet($(t.dataset.scan));
+      if(t.dataset.tog){const i=$(t.dataset.tog);i.disabled=!t.checked;i.required=t.checked;if(t.checked)i.focus()}
+      if(t.hasAttribute('data-undo')){fill(f);feedback(f,'Changes discarded.')}
+      if(t.hasAttribute('data-retry'))loadConfig()};
+  });
+  $('f_ethernet_board').onchange=ethBoard;
+  $('f_tzp').removeAttribute('data-k');
+  $('f_tzp').onchange=e=>{if(e.target.value)$('f_time_tz').value=e.target.value};
+  $('f_time_tz').oninput=tzSync;
+}
+function tzSync(){$('f_tzp').value=TZ.some(z=>z[0]==$('f_time_tz').value)?$('f_time_tz').value:''}
+function fill(scope=document){
+  if(!C)return;
+  $$('[data-k]',scope).forEach(el=>{const k=el.dataset.k,t=el.dataset.t,x=get(C,k);
+    if(t=='p'){el.value='';delete el.dataset.clr;const set=get(C,k+'_set');el.placeholder=set?'(unchanged)':'(not set)';el.parentNode.querySelector('[data-clr]').hidden=!set}
+    else if(el.dataset.off!=null){const on=x!=null&&x!==JSON.parse(el.dataset.off);$(el.id+'_on').checked=on;el.value=on?x:el.dataset.def;el.disabled=!on;el.required=on}
+    else if(t=='b')el.checked=!!x;
+    else{if(el.tagName=='SELECT'&&x!=null&&![...el.options].some(o=>o.value==x))el.add(new Option(x,x));el.value=x==null?'':x}});
+  if(scope==document||scope.contains($('f_time_tz')))tzSync();
+  if(scope==document||scope.contains($('f_ethernet_board')))ethBoard();
+}
+function ethBoard(){
+  const b=$('f_ethernet_board').value,p=BOARDS.find(x=>x.id==b),custom=b=='custom';
+  ['phy','addr','mdc','mdio','clk_mode','power_pin'].forEach(k=>{const el=$('f_ethernet_'+k);el.disabled=!custom;if(p&&!custom){if(el.tagName=='SELECT'&&![...el.options].some(o=>o.value==p[k]))el.add(new Option(p[k],p[k]));el.value=p[k]}});
+  $('ethNote').textContent=custom?'Custom pin assignment: wrong values can leave Ethernet down until fixed here or over Wi-Fi.':'Pins come from the board preset. Choose "Custom" to edit them.';
+}
+function collect(f){
+  const p={};
+  $$('[data-k]',f).forEach(el=>{
+    const k=el.dataset.k,t=el.dataset.t,[s,n]=k.split('.');let x;
+    if(el.dataset.off!=null&&!$(el.id+'_on').checked){x=JSON.parse(el.dataset.off);if(get(C,k)!==x)(p[s]||(p[s]={}))[n]=x;return}
+    if(el.disabled)return;
+    if(t=='p'){if(el.value)x=el.value;else if(el.dataset.clr)x='';else return}
+    else{x=t=='b'?el.checked:/n$/.test(t)?Number(el.value):k.startsWith('wifi.ssid')?el.value:el.value.trim();if(get(C,k)===x)return}
+    (p[s]||(p[s]={}))[n]=x});
+  return p;
+}
+function feedback(f,msg,error=false){const el=f.querySelector('[data-feedback]');el.textContent=msg;el.className=error?'hint err':'hint'}
+function dirty(){return C&&$$('form.cfg').some(f=>Object.keys(collect(f)).length)}
+window.addEventListener('beforeunload',e=>{if(dirty()){e.preventDefault();e.returnValue=''}});
+async function save(f){
+  if(!C||f.querySelector('fieldset').disabled||!f.reportValidity())return;
+  const p=collect(f),fs=f.querySelector('fieldset');
+  if(!Object.keys(p).length)return feedback(f,'Nothing changed.');
+  fs.disabled=true;feedback(f,'Saving…');
+  try{const r=await api('api/config',p);
+    // Merge only what was saved. Other tabs keep their pending edits, even if a
+    // changed admin password prevents the next authenticated request.
+    for(const [section,fields] of Object.entries(p))for(const [key,value] of Object.entries(fields)){
+      const el=$$('input[data-k],select[data-k]',f).find(el=>el.dataset.k==section+'.'+key);
+      if(el&&el.dataset.t=='p')C[section][key+'_set']=!!value;else C[section][key]=value;
+    }
+    fill(f);feedback(f,r.reboot_required?'Saved. Restart to apply these settings.':'Saved.');
+    if(S&&r.reboot_required){S.device.reboot_required=true;$('rb').hidden=false}
+    if(p.admin)feedback(f,'Saved. Your browser may ask you to log in again as admin with the new password.');
+  }catch(e){feedback(f,'Could not confirm the save: '+e.message+'. Your entries are still here.',true)}
+  finally{fs.disabled=false}
+}
+async function loadConfig(){
+  try{C=await api('api/config');fill();$$('form.cfg').forEach(f=>{f.querySelector('fieldset').disabled=false;f.querySelector('[data-retry]').hidden=true;feedback(f,'')})}
+  catch(e){$$('form.cfg').forEach(f=>{feedback(f,'Could not load settings: '+e.message,true);f.querySelector('[data-retry]').hidden=false})}
+}
+async function loadBoards(){
+  try{BOARDS=await api('api/boards')}catch(e){}
+  const s=$('f_ethernet_board');s.innerHTML='';
+  BOARDS.forEach(b=>s.add(new Option(b.name,b.id)));if(!BOARDS.some(b=>b.id=='custom'))s.add(new Option('Custom','custom'));
+}
+
+// ---------- Wi-Fi scan list (wizard and pickers) ----------
+let scanId=0;
+async function scan(el,pick){
+  const id=++scanId;let shown=false;
+  el.innerHTML='<div class="msg"><span class="spin"></span>Scanning for networks…</div>';
+  for(let i=0;i<40&&id==scanId;i++){
+    let r;try{r=await api('api/scan')}catch(e){el.innerHTML=`<div class="msg err">${esc(e.message)}</div>`;return}
+    if(id!=scanId)return;
+    const n=(r.networks||[]).filter(x=>x.ssid);
+    if(!r.scanning||(n.length&&!shown)){
+      shown=n.length>0;
+      el.innerHTML=n.length?n.map((x,j)=>`<button type="button" class="net" data-i="${j}"><span style="color:${qcol(x.quality)}">${bars(x.quality)}</span><span><b>${esc(x.ssid)}</b><small>${x.quality}% signal, channel ${x.channel}, ${esc(x.auth)}</small></span>${x.secure?LOCK:'<small>open</small>'}</button>`).join('')+(r.scanning?'<div class="msg"><span class="spin"></span>Still scanning…</div>':'')
+        :r.scanning?el.innerHTML:'<div class="msg">No networks found. Rescan, or enter a hidden network manually.</div>';
+      el.onclick=e=>{const b=e.target.closest('.net');if(b)pick(n[b.dataset.i])};
+      if(!r.scanning)return;
+    }
+    await sleep(1000);
+  }
+}
+function pickNet(input){
+  const b=modal(`<h2 id="ovT">Choose a network</h2><div class="nets" id="pl"></div><div class="row"><button type="button" class="sec" id="pr">Rescan</button><button type="button" class="sec" data-x>Cancel</button></div>`);
+  const go=()=>scan($('pl'),n=>{input.value=n.ssid;closeModal();input.focus()});
+  $('pr').onclick=go;b.querySelector('[data-x]').onclick=()=>modal.cancel();
+  modal.cancel=()=>{scanId++;closeModal()};go();
+}
+
+// ---------- firmware ----------
+function fwInfo(){
+  const d=S.device,el=$('fwI');if(!el)return;const sb=d.safeboot;
+  el.innerHTML=kv([['Version',v(d.version)],['Built',v(d.build)],['ESP-IDF',v(d.idf)],['Running from',v(d.partition)],
+    ['Update method',{dual:'Two slots: installs alongside the running firmware',safeboot:'Through the safeboot firmware',none:'Serial only'}[d.ota_mode]||v(d.ota_mode)],
+    d.ota_mode=='safeboot'&&['Safeboot firmware',sb&&sb.ours?'WiFi Bridge safeboot '+v(sb.version):'<span class="warn">Another firmware’s safeboot</span>']]);
+}
+// what an image is, from its app description (offset 32: version at +16, project name at +48)
+async function imgInfo(f){
+  const b=new Uint8Array(await f.slice(0,112).arrayBuffer()),s=(o,n)=>new TextDecoder().decode(b.slice(o,o+n)).replace(/\0[\s\S]*$/,'');
+  return b[0]==0xE9&&b.length>=112?{name:s(80,32),version:s(48,32)}:null;
+}
+const sbOurs=()=>S.device.ota_mode=='safeboot'&&S.device.safeboot&&S.device.safeboot.ours;
+function buildFw(){
+  const d=S.device,m=d.ota_mode;
+  let h=`<div class="narrow"><div class="card"><h2>Firmware</h2><div id="fwI"></div></div><div class="card"><h2>Install an update</h2>`;
+  if(m=='none')h+='<p class="mu">This partition layout has no room for updates over the network. Flash new firmware over USB/serial.</p>';
+  else{
+    if(m=='safeboot')h+=sbOurs()?`<p class="mu">This board has one firmware slot. To update, the bridge restarts into its small safeboot firmware, which installs the new version and starts it. Bridging pauses for about a minute. Settings are kept.</p>`
+      :`<div class="note"><p>This board has one firmware slot and another firmware’s safeboot. Install <b>wifi-bridge-&lt;version&gt;.safeboot.bin</b> here first; after that, updates are one click.</p></div>`;
+    h+=`<div class="fld"><label for="fwF">Firmware file</label><div class="ig"><input type="file" id="fwF" accept=".bin,application/octet-stream"><button id="fwU">Install</button></div><small>Use <b>wifi-bridge-&lt;version&gt;.ota.bin</b>${m=='safeboot'?', or the <b>.safeboot.bin</b> to replace the safeboot firmware':''}. Settings are kept.</small></div>
+    <form class="fld" id="fwUF" style="margin-top:18px"><label for="fwUrl">Or install from a URL</label><div class="ig"><input id="fwUrl" type="url" inputmode="url" placeholder="https://…/wifi-bridge-0.1.0.ota.bin" required pattern="https?://.+" spellcheck="false" autocapitalize="off"><button id="fwUB">Install</button></div></form>
+    <div id="fwP" hidden><div class="bar big"><i id="fwBar"></i></div><small class="hint" id="fwT" aria-live="polite"></small></div>`;
+    if(m=='safeboot')h+=`<div class="row"><button class="sec" id="sbB">Restart into safeboot</button></div><small class="hint">Opens the safeboot page at this address, to install firmware by hand.</small>`;
+  }
+  $('t-fw').innerHTML=h+'</div></div>';fwInfo();
+  if(m=='none')return;
+  if(m=='safeboot')$('sbB').onclick=async()=>{if(await ask('Restart into safeboot?','Bridging pauses. The safeboot page appears at this address in about 15 seconds. If you close that page without installing, the bridge starts again by itself after 10 minutes.','Restart'))reboot('safeboot','Restarting into safeboot…')};
+  $('fwU').onclick=upload;
+  $('fwUF').onsubmit=async e=>{e.preventDefault();if(!e.target.reportValidity())return;const url=$('fwUrl').value.trim();
+    if(m=='safeboot'&&!sbOurs())return toast('Install the WiFi Bridge safeboot firmware first.','err');
+    if(!await ask('Install from this URL?',esc(url)+(m=='safeboot'?'<br><br>The bridge restarts into safeboot to install it.':''),'Install'))return;
+    fwBusy(true);
+    try{if(m=='safeboot')await toSafeboot();await api('api/ota/url',{url});otaPoll()}catch(x){if(!x.status)return fwUncertain(x.message);fwBusy(false);fwProg(0,x.message,1)}};
+}
+const fwProg=(p,t,err)=>{$('fwP').hidden=false;$('fwBar').style.width=p+'%';$('fwBar').style.background=err?'var(--err)':'';$('fwT').textContent=t;$('fwT').className='hint'+(err?' err':'')};
+const fwBusy=b=>{busy=b;['fwU','fwUB','fwF','fwUrl','sbB'].forEach(i=>$(i)&&($(i).disabled=b))};
+// restart into our safeboot firmware and wait for it at this address
+async function toSafeboot(){
+  fwProg(0,'Restarting into safeboot…');
+  await api('api/reboot',{target:'safeboot'});await sleep(4000);
+  for(let i=0;i<60;i++){try{const s=await api('api/status',undefined,{to:3000});if(s.mode=='safeboot')return}catch(e){if(e.status==401)throw e}
+    fwProg(0,'Waiting for the safeboot firmware…');await sleep(2000)}
+  throw new Error('The safeboot firmware did not answer at this address. Open this page again in a minute.');
+}
+async function upload(){
+  const f=$('fwF').files[0],d=S.device;if(!f)return toast('Choose a firmware file first','err');
+  let im;try{im=await imgInfo(f)}catch(e){return toast('Could not read this file. Choose it again.','err')}
+  if(!im)return toast('This isn’t ESP32 firmware. Use the .ota.bin file (not the .factory.bin).','err');
+  const sb=im.name=='wifi-bridge-safeboot';
+  if(!sb&&im.name!='wifi-bridge')return toast('This file is “'+im.name+'”, not WiFi Bridge firmware.','err');
+  if(sb&&d.ota_mode!='safeboot')return toast('This board has no safeboot slot, so it doesn’t use the safeboot firmware.','err');
+  const via=!sb&&d.ota_mode=='safeboot';
+  if(via&&!sbOurs())return toast('Install the WiFi Bridge safeboot firmware (.safeboot.bin) first.','err');
+  if(!await ask(sb?'Install the safeboot firmware?':'Install WiFi Bridge '+esc(im.version)+'?',
+    sb?`Replaces the safeboot firmware with version ${esc(im.version)}. The bridge keeps running.`:via?'The bridge restarts into safeboot, installs the update and starts again. Bridging pauses for about a minute.':'The bridge installs the update and restarts. Bridging pauses for about 15 seconds.','Install'))return;
+  fwBusy(true);
+  try{if(via)await toSafeboot()}catch(e){fwBusy(false);return fwProg(0,e.message,1)}
+  fwProg(0,'Uploading…');
+  const x=new XMLHttpRequest();x.open('POST','api/ota/upload');x.timeout=180000;x.setRequestHeader('Content-Type','application/octet-stream');
+  x.upload.onprogress=e=>{if(e.lengthComputable){const p=e.loaded/e.total*100;fwProg(p,p>=100?'Checking the image…':`Uploading… ${p|0}% (${kb(e.loaded)} of ${kb(e.total)})`)}};
+  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}
+    if(x.status==200&&j.ok===true){
+      if(j.installed=='safeboot'){fwBusy(false);fwProg(100,'Safeboot firmware installed. Reload this page to use it.');toast('Safeboot firmware installed','ok');$('fwT').append(reloadLink());return}
+      fwProg(100,'Installed.');waitRestart('Firmware installed. Restarting…')}
+    else{fwBusy(false);fwProg(100,'Not installed: '+(x.status==401?'login required':j.error||'HTTP '+x.status),1)}};
+  x.onerror=x.ontimeout=x.onabort=()=>fwUncertain('The upload connection was interrupted.');
+  x.send(f);
+}
+async function otaPoll(){
+  fwProg(0,'Starting download…');let heard=Date.now(),advanced=heard,bytes=-1;
+  for(;;){await sleep(1000);let r;try{r=await api('api/ota',undefined,{to:5000});heard=Date.now()}catch(e){
+      if(e.status==401)return fwUncertain('Log in again to check the update.');
+      if(Date.now()-heard>60000)return fwUncertain('The bridge stopped reporting update progress.');
+      fwProg(0,'Connection interrupted. Waiting for the bridge…');continue}
+    if(r.bytes!==bytes){bytes=r.bytes;advanced=Date.now()}
+    if(Date.now()-advanced>180000)return fwUncertain('The update has not reported progress for three minutes.');
+    if(r.state=='running')fwProg(r.progress,`Downloading… ${r.progress}%`+(r.total?` (${kb(r.bytes)} of ${kb(r.total)})`:''));
+    else if(r.state=='done'){fwProg(100,'Installed.');if(r.installed=='safeboot'){fwBusy(false);return toast('Safeboot firmware installed','ok')}return waitRestart('Firmware installed. Restarting…')}
+    else if(r.state=='error'){fwBusy(false);return fwProg(100,'Not installed: '+(r.error||'unknown error'),1)}
+    else{return fwUncertain('The update status was reset, possibly by a restart.')}}
+}
+function reloadLink(){const a=document.createElement('a');a.href='./#fw';a.textContent=' Reload to check the bridge.';a.onclick=e=>{e.preventDefault();location.reload()};return a}
+function fwUncertain(message){fwProg(0,message+' The result is unknown. Keep the bridge powered on and check its firmware before trying again.',1);$('fwT').append(reloadLink())}
+
+// ---------- console ----------
+let logSeq=0,logOn=false,hist=[],hi=0;
+// Console commands may contain passwords; keep history only in this page's memory.
+try{localStorage.removeItem('wbHist')}catch(e){}
+function logAdd(cls,text){const L=$('log'),d=document.createElement('div');d.className=cls;d.textContent=text;L.append(d);
+  while(L.childNodes.length>1500)L.firstChild.remove();if($('auto').checked)L.scrollTop=L.scrollHeight}
+const ts=t=>(t/1000).toFixed(3).padStart(10);
+async function logPoll(){
+  if(tab!='con'||$('app').hidden){logOn=false;return}
+  try{const r=await api('api/log?since='+logSeq,undefined,{to:4000});
+    if(r.next<logSeq){logAdd('X','--- device restarted ---');logSeq=0;return setTimeout(logPoll,0)}
+    r.lines.forEach(l=>logAdd(l.lvl,ts(l.t)+' '+l.lvl+' '+l.msg));logSeq=r.next}catch(e){}
+  setTimeout(logPoll,1000);
+}
+$('cmdF').onsubmit=async e=>{e.preventDefault();const c=$('cmd').value.trim();if(!c)return;
+  if(hist[hist.length-1]!=c)hist.push(c);hist=hist.slice(-50);hi=hist.length;
+  $('cmd').value='';logAdd('C','> '+c);
+  try{const r=await api('api/cmd',{cmd:c});logAdd('R',typeof r.result=='string'?r.result:JSON.stringify(r.result,null,1))}catch(x){logAdd('E','! '+x.message)}};
+$('cmd').onkeydown=e=>{if(e.key!='ArrowUp'&&e.key!='ArrowDown')return;e.preventDefault();
+  hi=Math.max(0,Math.min(hist.length,hi+(e.key=='ArrowUp'?-1:1)));$('cmd').value=hist[hi]||''};
+$('logClr').onclick=()=>$('log').textContent='';
+
+// ---------- maintenance ----------
+$('rbBtn').onclick=()=>reboot('normal');
+$('rbN').onclick=async()=>{if(await ask('Restart the bridge?','The connection is interrupted for about 10 seconds.','Restart'))reboot('normal')};
+$('rbS').onclick=async()=>{if(await ask('Restart into setup mode?','The bridge stops bridging and starts the setup network until it is configured, restarted, or 10 minutes pass without this page open.<br><br>'+SETUP_NOTE(),'Restart'))reboot('setup','Restarting into setup mode…',SETUP_NOTE())};
+$('rsB').onclick=async()=>{const f=$('rsF').files[0];if(!f)return toast('Choose a backup file first','err');
+  if(f.size>8192)return toast('This file is too large to be a settings backup.','err');
+  let t;try{t=await f.text();const j=JSON.parse(t);if(j._firmware!='wifi-bridge'||!j.device||!j.wifi||!j.network)throw new Error()}catch(e){return toast('Choose a WiFi Bridge settings backup (.json).','err')}
+  if(!await ask('Restore backup?',`Apply settings from <b>${esc(f.name)}</b> and restart? Passwords missing from this backup will be kept.`,'Restore',1))return;
+  try{await api('api/config/restore',t);waitRestart('Restoring settings…','If the backup has a different management address or hostname, the bridge comes back at that address.')}catch(e){toast('Restore failed: '+e.message,'err')}};
+async function reset(scope){
+  const all=scope=='all';
+  if(!await ask(all?'Reset everything?':'Reset Wi-Fi settings?',(all?'All settings, including Ethernet, MQTT and passwords, are erased.':'Wi-Fi networks, their passwords and the bridge\'s own address are erased; other settings are kept.')+' The bridge restarts into setup mode.<br><br>'+SETUP_NOTE(),all?'Erase everything':'Reset Wi-Fi',1))return;
+  try{await api('api/reset',{scope});waitRestart('Resetting…',SETUP_NOTE())}catch(e){toast(e.message,'err')}
+}
+$('crE').onclick=async()=>{try{await api('api/coredump/erase',{});toast('Crash report deleted','ok');S.device.last_crash=null;crash()}catch(e){toast(e.message,'err')}};
+$('fW').onclick=()=>reset('wifi');$('fA').onclick=()=>reset('all');
+
+// ---------- tabs ----------
+const TABS=[['dash','Dashboard'],['wifi','Wi-Fi'],['net','Network'],['eth','Ethernet'],['mqtt','MQTT'],['sys','System'],['fw','Firmware'],['con','Console'],['mnt','Maintenance']];
+function show(t){
+  if(!TABS.some(x=>x[0]==t))t='dash';tab=t;
+  $$('#nav button').forEach(b=>{const on=b.dataset.t==t;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1;on&&b.scrollIntoView({block:'nearest',inline:'nearest'})});
+  TABS.forEach(x=>$('t-'+x[0]).hidden=x[0]!=t);
+  if(history.replaceState)history.replaceState(null,'','#'+t);
+  if(t=='dash'&&S)renderDash();
+  if(t=='fw'&&S)fwInfo();
+  if(t=='con'&&!logOn){logOn=true;logPoll()}
+}
+function showApp(){
+  scanId++;$('wiz').hidden=true;$('app').hidden=false;$('nav').hidden=false;show(location.hash.slice(1));
+}
+$('nav').innerHTML=TABS.map(x=>`<button role="tab" data-t="${x[0]}" aria-controls="t-${x[0]}" id="tb-${x[0]}">${x[1]}</button>`).join('');
+TABS.forEach(x=>$('t-'+x[0]).setAttribute('aria-labelledby','tb-'+x[0]));
+$('nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.t)};
+$('nav').onkeydown=e=>{const i=TABS.findIndex(x=>x[0]==tab),d=e.key=='ArrowRight'?1:e.key=='ArrowLeft'?-1:0;
+  if(d){e.preventDefault();show(TABS[(i+d+TABS.length)%TABS.length][0]);$('tb-'+tab).focus()}};
+$('wizBtn').onclick=()=>wizStart();
+
+// ---------- setup wizard ----------
+const W={};
+function wiz(step,html){
+  $('wiz').innerHTML=`<div class="steps" aria-label="Step ${step} of 5">${[1,2,3,4,5].map(i=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div><div class="card">${html}</div>`+(step<5?'<p class="c" style="margin-top:14px"><button class="lnk" id="wSkip">Skip setup, show all settings</button></p>':'');
+  const s=$('wSkip');if(s)s.onclick=showApp;
+  const f=$('wiz').querySelector('[autofocus]');f&&f.focus();
+}
+function wizStart(){
+  $('app').hidden=true;$('nav').hidden=true;$('wiz').hidden=false;
+  wiz(1,`<h2>Connect the bridge to your Wi-Fi</h2><p class="mu">Choose the 2.4 GHz network the wired device should be connected to. 5 GHz-only networks aren’t supported.</p><div class="nets" id="wl" aria-live="polite"></div>
+  <div class="row"><button class="sec" id="wRs">Rescan</button><button class="sec" id="wHid">Hidden network…</button></div>`);
+  const go=()=>scan($('wl'),n=>wizPw(n.ssid,n.secure,false));
+  $('wRs').onclick=go;$('wHid').onclick=()=>wizPw('',true,true);go();
+}
+function wizPw(ssid,secure,hidden){
+  scanId++;Object.assign(W,{ssid,secure,hidden});
+  wiz(2,`<form id="wF"><h2>${hidden?'Hidden network':'Join '+esc(ssid)}</h2>
+  ${hidden?`<div class="fld"><label for="wS">Network name (SSID)</label><input id="wS" required maxlength="32" autofocus spellcheck="false" autocapitalize="off"></div>`:''}
+  ${secure?`<div class="fld" style="margin-top:12px"><label for="wP">Password</label><input id="wP" type="password" maxlength="64" ${hidden?'':'autofocus required'} autocomplete="off"><small>${hidden?'Leave empty for an open network.':'The Wi-Fi password (WPA/WPA2/WPA3).'}</small></div>
+  <div class="ck" style="margin-top:8px"><input type="checkbox" id="wSh"><label for="wSh">Show password</label></div>`:'<p class="note">This is an <b>open</b> network without a password. Anyone nearby can read unencrypted traffic.</p>'}
+  <div class="row"><button>Test connection</button><button type="button" class="sec" id="wB">Back</button></div></form>`);
+  $('wB').onclick=wizStart;
+  if(secure)$('wSh').onchange=e=>$('wP').type=e.target.checked?'text':'password';
+  $('wF').onsubmit=e=>{e.preventDefault();if(!e.target.reportValidity())return;
+    if(hidden)W.ssid=$('wS').value;W.pw=secure?$('wP').value:'';wizTest()};
+}
+const WERR={'wrong password':'The password was rejected. Check it (it is case-sensitive) and try again.','network not found':'The network was not found. Check the name, or move the bridge closer to the router.','no dhcp':'Connected, but the router did not hand out an address (DHCP). Check that DHCP is enabled.'};
+async function wizTest(){
+  wiz(3,`<div class="c" aria-live="polite"><span class="spin big"></span><h2>Connecting to ${esc(W.ssid)}…</h2><p class="mu">This takes up to 30 seconds. If this page loses its connection for a moment, that’s normal: the setup network may switch channels.</p></div>`);
+  let err='';
+  try{await api('api/wifi/test',{ssid:W.ssid,password:W.pw});
+    const t0=Date.now();err='The connection test timed out. Check the signal strength and try again.';
+    while(Date.now()-t0<60000){await sleep(1500);let r;try{r=await api('api/wifi/test',undefined,{to:4000})}catch(e){if(e.status==401)throw e;continue}
+      if(r.state=='connected')return wizNet(r);
+      if(r.state=='failed'){err=WERR[r.error]||('Connection failed'+(r.error?': '+r.error:'.'));break}}
+  }catch(e){err=e.message}
+  wiz(3,`<h2 class="err">Could not connect</h2><p role="alert">${esc(err)}</p><div class="row"><button id="wR">Try again</button><button class="sec" id="wC">Choose another network</button></div>`);
+  $('wR').onclick=()=>wizPw(W.ssid,W.secure,W.hidden);$('wC').onclick=wizStart;
+}
+const ip2n=s=>s.split('.').reduce((a,b)=>a*256+ +b,0);
+function wizNet(r){
+  W.test=r;
+  wiz(4,`<form id="wF" novalidate><h2 class="ok">Connected to ${esc(W.ssid)}</h2>
+  ${kv([['Test address (DHCP)',v(r.ip)],['Netmask',v(r.netmask)],['Gateway',v(r.gateway)],['DNS',v(r.dns)]])}
+  <h3>Management address</h3><div class="note"><p>Wi-Fi only allows one MAC address per client, so the bridge and your wired device <b>share one MAC</b>. The DHCP address above will go to the wired device.</p><p>The bridge's own web interface therefore needs a <b>static address</b> in the same network. Use a free address outside your router's DHCP range (or reserve it in the router). The suggested address is <b>${v(r.suggested_ip)}</b>, which did not answer a ping.</p></div>
+  <div class="fs">${[['wIp','IP address',r.suggested_ip,1],['wNm','Netmask',r.netmask,1],['wGw','Gateway',r.gateway],['wDns','DNS server',r.dns]].map(x=>`<div class="fld"><label for="${x[0]}">${x[1]}</label><input id="${x[0]}" value="${esc(x[2])}" inputmode="decimal" pattern="${IPP}" ${x[3]?'required':''}></div>`).join('')}
+  <h3>Device</h3><div class="fld"><label for="wH">Hostname</label><input id="wH" required maxlength="32" pattern="${HOSTP}" value="${esc(S?S.device.hostname:'')}" spellcheck="false" autocapitalize="off"><small>Reachable as &lt;hostname&gt;.local</small></div>
+  <div class="fld"><label for="wA">Admin password (optional)</label><input id="wA" type="password" maxlength="64" autocomplete="new-password"><small>Protects this web interface (user <b>admin</b>).</small></div>
+  <div class="fld"><label for="wA2">Repeat admin password</label><input id="wA2" type="password" maxlength="64" autocomplete="new-password"></div></div>
+  <p class="err" id="wE" role="alert"></p>
+  <div class="row"><button>Save and restart</button><button type="button" class="sec" id="wB">Back</button></div></form>`);
+  $('wB').onclick=()=>wizPw(W.ssid,W.secure,W.hidden);
+  $('wF').onsubmit=e=>{e.preventDefault();wizSave(e.target)};
+}
+async function wizSave(f){
+  const g=i=>$(i).value.trim(),E=$('wE');E.textContent='';
+  if(!f.reportValidity())return;
+  const ip=g('wIp'),nm=g('wNm'),gw=g('wGw'),r=W.test,mask=ip2n(nm);
+  if(ip==r.ip)return E.textContent='This is the DHCP address the wired device will receive. Choose a different address.';
+  if(gw&&(ip2n(ip)&mask)!==(ip2n(gw)&mask))return E.textContent='The IP address isn’t in the same subnet as the gateway.';
+  if(ip==gw)return E.textContent='The IP address must differ from the gateway.';
+  if($('wA').value!=$('wA2').value)return E.textContent='The admin passwords don’t match.';
+  const b=f.querySelector('button');b.disabled=true;
+  const body={ssid:W.ssid,password:W.pw,hostname:g('wH'),network:{ip,netmask:nm,gateway:gw,dns:g('wDns')}};
+  if($('wA').value)body.admin_password=$('wA').value;
+  try{wizDone(await api('api/setup',body),!!body.admin_password)}catch(e){E.textContent='Saving failed: '+e.message;b.disabled=false}
+}
+async function wizDone(r,pw){
+  busy=true;
+  wiz(5,`<h2 class="ok">Setup complete</h2><p>The bridge is restarting and joining <b>${esc(W.ssid)}</b>. The setup network will disappear.</p>
+  <ol><li>Reconnect this phone or computer to your normal network <b>${esc(W.ssid)}</b>.</li><li>Open the bridge at:<div class="big"><a href="${esc(r.url)}">${esc(r.url)}</a></div><div class="big"><a href="${esc(r.mdns)}">${esc(r.mdns)}</a></div></li><li>Plug the wired device into the Ethernet port. It gets its address from your router.</li></ol>
+  <p class="note" id="wReach" aria-live="polite">Waiting for the restart…</p>${pw?'<p class="mu">Log in with user <b>admin</b> and the password you chose.</p>':''}`);
+  for(let n=8;n>0;n--){$('wReach').textContent=`Restarting… checking in ${n} s`;await sleep(1000)}
+  for(;;){
+    const ac=new AbortController(),t=setTimeout(()=>ac.abort(),4000);let ok=false;
+    try{await fetch(r.url,{mode:'no-cors',cache:'no-store',signal:ac.signal});ok=true}catch(e){}
+    clearTimeout(t);
+    $('wReach').innerHTML=ok?`<b class="ok">The bridge is online.</b> <a href="${esc(r.url)}">Open ${esc(r.url)}</a>`:`Not reachable from here yet. That is expected until this device is back on <b>${esc(W.ssid)}</b>. Checking again…`;
+    if(ok)return;await sleep(3000)}
+}
+
+// ---------- start ----------
+buildForms();
+(async function init(){
+  for(;;){try{S=await api('api/status');break}catch(e){
+    setPill('err',e.status==401?'Login required':'Offline');$('offMsg').textContent=e.status==401?e.message:'The bridge isn’t responding. Retrying…';$('offline').hidden=false;$('hSub').textContent='';await sleep(3000)}}
+  onStatus(S);buildFw();
+  if(S.mode=='setup'&&!location.hash)wizStart();else showApp();
+  await loadBoards();await loadConfig();
+  setTimeout(poll,2000);
+})();
+</script>
+</body>
+</html>

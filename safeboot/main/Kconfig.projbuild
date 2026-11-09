@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: Apache-2.0
+# The firmware's options (board, presets, QEMU), so the shared sources build the same way
+rsource "../../main/Kconfig.projbuild"
