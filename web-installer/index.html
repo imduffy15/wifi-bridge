@@ -75,9 +75,15 @@
   nav a:hover { color: var(--text); }
   @media (max-width: 640px) { nav a:not(:last-child) { display: none; } }
 
-  .hero { padding: 64px 0 40px; text-align: center; }
+  .hero { padding: 40px 0; text-align: center; }
+  .hero .wrap { max-width: 1280px; }
   .hero h1 { font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.02em; }
-  .hero p.lead { font-size: 1.15rem; color: var(--muted); max-width: 640px; margin: 0 auto 28px; }
+  .hero p.lead { font-size: 1.15rem; color: var(--muted); max-width: 720px; margin: 0 auto 32px; }
+  .hero-showcase { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1fr); align-items: center; gap: 28px; }
+  .hero-showcase .install-card { width: 100%; }
+  @media (max-width: 900px) {
+    .hero-showcase { grid-template-columns: minmax(0, 1fr); }
+  }
   .badge {
     display: inline-flex; align-items: center; gap: 8px;
     font-size: 0.85rem; color: var(--muted);
@@ -214,26 +220,32 @@
     <div class="wrap">
       <div class="badge pending" id="version-badge"><span class="dot"></span><span id="version-text">Loading firmware information…</span></div>
       <h1>Put any wired device on Wi-Fi</h1>
-      <p class="lead">WiFi Bridge turns a WT32-ETH01 or another ESP32 Ethernet board into a bridge between your Wi-Fi network and the board's Ethernet port. Printers, NAS devices, game consoles, and other wired-only devices join your Wi-Fi network without new cables.</p>
+      <p class="lead">Connect your printer, NAS, or game console to Wi-Fi with an ESP32 Ethernet board. Set up and manage the bridge from your browser.</p>
 
-      <div class="install-card" id="install-card">
-        <esp-web-install-button manifest="manifest.json" id="installer">
-          <button slot="activate" class="btn" id="install-btn" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-            <span id="install-label">Install WiFi Bridge</span>
-          </button>
-          <div slot="unsupported" class="callout">
-            <strong>This browser can't install firmware.</strong> The installer needs Web Serial, which desktop Chrome, Edge, and Opera support. Open this page in one of those browsers.
+      <div class="hero-showcase">
+        <figure class="screenshot">
+          <a href="images/dashboard.png"><img src="images/dashboard.png" width="1770" height="1140" fetchpriority="high" decoding="async" alt="Desktop dashboard showing the Wi-Fi connection, bridge, wired device, and traffic statistics"></a>
+          <figcaption>Wi-Fi, the bridge, and your wired device—at a glance. Select to view full size.</figcaption>
+        </figure>
+        <div class="install-card" id="install-card">
+          <esp-web-install-button manifest="manifest.json" id="installer">
+            <button slot="activate" class="btn" id="install-btn" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+              <span id="install-label">Install WiFi Bridge</span>
+            </button>
+            <div slot="unsupported" class="callout">
+              <strong>This browser can't install firmware.</strong> The installer needs Web Serial, which desktop Chrome, Edge, and Opera support. Open this page in one of those browsers.
+            </div>
+            <div slot="not-allowed" class="callout">
+              <strong>This page can't access serial ports.</strong> Open it over HTTPS or from <code>localhost</code>.
+            </div>
+          </esp-web-install-button>
+          <p class="note">Connect the board over USB first (see <a href="#install">the steps below</a>). Then click <strong>Install</strong> and choose its serial port. On a first install, select <strong>Erase device</strong>.</p>
+          <div class="links">
+            <a href="#" data-link="release" id="release-link">Release notes</a>
+            <a href="#" data-link="ota" id="ota-link">Download the update file</a>
+            <a href="firmware/SHA256SUMS" id="sums-link">SHA256SUMS</a>
           </div>
-          <div slot="not-allowed" class="callout">
-            <strong>This page can't access serial ports.</strong> Open it over HTTPS or from <code>localhost</code>.
-          </div>
-        </esp-web-install-button>
-        <p class="note">Connect the board over USB first (see <a href="#install">the steps below</a>). Then click <strong>Install</strong> and choose its serial port. On a first install, select <strong>Erase device</strong>.</p>
-        <div class="links">
-          <a href="#" data-link="release" id="release-link">Release notes</a>
-          <a href="#" data-link="ota" id="ota-link">Download the update file</a>
-          <a href="firmware/SHA256SUMS" id="sums-link">SHA256SUMS</a>
         </div>
       </div>
     </div>
@@ -274,10 +286,6 @@
     <div class="wrap">
       <h2>A look at the bridge's page</h2>
       <p class="sub">Set up, check connections, and install updates from your browser. Select a screenshot to see it full size.</p>
-      <figure class="screenshot">
-        <a href="images/dashboard.png"><img src="images/dashboard.png" width="1770" height="1140" loading="lazy" decoding="async" alt="Desktop dashboard showing the Wi-Fi connection, bridge, wired device, and traffic statistics"></a>
-        <figcaption><strong>See every connection</strong>Check Wi-Fi signal, the wired device's address, and traffic from one dashboard.</figcaption>
-      </figure>
       <div class="grid phone-screenshots">
         <figure class="screenshot">
           <a href="images/setup-phone.png"><img src="images/setup-phone.png" width="585" height="1170" loading="lazy" decoding="async" alt="Phone setup page listing nearby Wi-Fi networks and their signal strength"></a>
