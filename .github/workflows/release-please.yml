@@ -41,7 +41,7 @@ jobs:
       tag_name: ${{ steps.rp.outputs.tag_name }}
       version: ${{ steps.rp.outputs.version }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: rp
         with:
           # Optional PAT / GitHub App token so CI runs on the release PR (PRs opened with
