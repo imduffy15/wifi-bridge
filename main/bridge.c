@@ -5,15 +5,22 @@
  *
  * Bridge data path (derived from the ESP-IDF sta2eth example, originally Unlicense OR CC0-1.0).
  *
- *   Wi-Fi -> wired : everything, except frames for the management address (ARP target / IPv4 destination),
- *                    which go to our own lwIP stack. mDNS multicast goes to both.
- *   wired -> Wi-Fi : everything, with the wired device's MAC rewritten to ours (see eth.c mac_spoof).
+ *   Wi-Fi -> wired : everything except IPv6, and except frames for the management address (ARP target /
+ *                    IPv4 destination), which go to our own lwIP stack. mDNS multicast goes to both.
+ *   wired -> Wi-Fi : the wired device's frames, with its MAC rewritten to ours (see eth.c mac_spoof).
+ *
+ * Airtime: access points send broadcast and multicast at the lowest basic rate, so the wired side is
+ * filtered before it reaches the radio. Dropped: frames from any other MAC (the access point would discard
+ * them), IEEE 802.1 link-local frames (STP, LLDP, LACP, 802.1X: bridges never forward them), IPv6 (its
+ * neighbor discovery carries the real MAC, so it can't work through the bridge), and broadcast/multicast
+ * beyond a rate limit (ARP and DHCP are exempt).
  */
 #include <string.h>
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
+#include "esp_timer.h"
 #include "esp_private/wifi.h"
 #include "config.h"
 #include "wb.h"
@@ -25,6 +32,49 @@ static uint8_t s_sta_mac[6];
 static uint32_t s_my_ip;
 static esp_netif_t *s_sta;
 static volatile bool s_up;
+
+#define BCAST_RATE   30          /* broadcast/multicast frames per second, wired -> Wi-Fi */
+#define BCAST_BURST  60
+
+static inline bool is_ipv6(const uint8_t *b)
+{
+    return b[12] == 0x86 && b[13] == 0xdd;
+}
+
+/* ARP, and DHCP client -> server (UDP 68 -> 67), keep working whatever the rate */
+static inline bool is_arp_or_dhcp(const uint8_t *b, uint16_t len)
+{
+    if (b[12] == 0x08 && b[13] == 0x06) {
+        return true;
+    }
+    if (b[12] != 0x08 || b[13] != 0x00 || len < 14 + 20 + 8 || b[23] != 17) {
+        return false;
+    }
+    size_t ihl = (b[14] & 0x0F) * 4;
+    if (ihl < 20 || len < 14 + ihl + 4) {
+        return false;
+    }
+    const uint8_t *udp = b + 14 + ihl;
+    return udp[0] == 0 && udp[1] == 68 && udp[2] == 0 && udp[3] == 67;
+}
+
+/* token bucket for wired -> Wi-Fi broadcast/multicast (runs in the Ethernet receive task only) */
+static bool bcast_allowed(void)
+{
+    static int64_t last_us;
+    static int32_t tokens = BCAST_BURST;
+    int64_t now = esp_timer_get_time();
+    int32_t add = (int32_t)((now - last_us) * BCAST_RATE / 1000000);
+    if (add > 0) {
+        tokens = tokens + add > BCAST_BURST ? BCAST_BURST : tokens + add;
+        last_us = now;
+    }
+    if (tokens <= 0) {
+        return false;
+    }
+    tokens--;
+    return true;
+}
 
 static inline bool frame_is_for_me(const uint8_t *b, uint16_t len)
 {
@@ -60,6 +110,11 @@ static esp_err_t wifi_rx(void *buffer, uint16_t len, void *eb)
         g_state.frames.to_me++;
         return esp_netif_receive(s_sta, buffer, len, eb);    /* the stack frees eb */
     }
+    if (is_ipv6(b)) {
+        g_state.frames.wifi_drop++;                         /* IPv4 only: see the top of the file */
+        esp_wifi_internal_free_rx_buffer(eb);
+        return ESP_OK;
+    }
     if (frame_is_mdns(b, len)) {
         eth_transmit(buffer, len);                          /* copied into DMA buffers synchronously */
         g_state.frames.to_me++;
@@ -90,7 +145,22 @@ void bridge_from_wired(uint8_t *b, uint16_t len)
             g_state.frames.client_ip = spa;
         }
     }
+    /* IEEE 802.1 link-local (01:80:c2:00:00:0x) and IPv6 never go on the air */
+    if ((b[0] == 0x01 && b[1] == 0x80 && b[2] == 0xc2 && b[3] == 0 && b[4] == 0 && (b[5] & 0xF0) == 0) ||
+        is_ipv6(b)) {
+        g_state.frames.wired_drop++;
+        return;
+    }
     mac_spoof(FROM_WIRED, b, len, s_sta_mac);
+    /* only the bridged device's frames (now under our MAC): the access point drops any other source */
+    if (memcmp(b + 6, s_sta_mac, 6) != 0) {
+        g_state.frames.wired_drop++;
+        return;
+    }
+    if ((b[0] & 1) && !is_arp_or_dhcp(b, len) && !bcast_allowed()) {
+        g_state.frames.wired_drop++;
+        return;
+    }
     if (esp_wifi_internal_tx(WIFI_IF_STA, b, len) != ESP_OK) {
         g_state.frames.wifi_tx_fail++;
     } else {

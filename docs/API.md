@@ -75,7 +75,9 @@ Returns the live state. The web page polls this endpoint every 2 seconds.
   },
   "client": { "mac": "11:22:33:44:55:66", "ip": "192.168.1.42" },   // learned wired device, null fields if unknown
   "frames": { "wired_to_wifi": 0, "wifi_to_wired": 0, "to_bridge": 0,
-              "wifi_tx_fail": 0, "wifi_drop": 0, "wired_drop": 0 },
+              "wifi_tx_fail": 0, "wifi_drop": 0, "wired_drop": 0 },  // drops include filtered frames:
+                                                                         // IPv6, 802.1 link-local, other wired
+                                                                         // MACs, broadcast over the rate limit
   "mqtt": { "enabled": false, "connected": false },
   "ota": { "state": "idle", "progress": 0, "error": "", "bytes": 0, "total": 0 }
 }
