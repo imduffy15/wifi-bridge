@@ -1,6 +1,13 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## [0.1.1](https://github.com/imduffy15/wifi-bridge/compare/v0.1.0...v0.1.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **docs:** include screenshots in the installer and improve README previews ([#7](https://github.com/imduffy15/wifi-bridge/issues/7)) ([5efbed7](https://github.com/imduffy15/wifi-bridge/commit/5efbed7e66e3449e36fa8bfb69ef2e282a3c0568))
+
 ## 0.1.0 (2026-11-09)
 
 First public release.
