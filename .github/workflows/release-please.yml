@@ -68,7 +68,7 @@ jobs:
       TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
       VERSION: ${{ needs.release-please.outputs.version }}   # set from TAG below on manual builds
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.TAG }}
 
@@ -160,7 +160,7 @@ jobs:
             echo "GitHub Pages is not enabled here; the installer goes to the public installer repository if INSTALLER_DEPLOY_KEY is set. See docs/RELEASING.md." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Resolve release
         id: rel
@@ -247,7 +247,7 @@ jobs:
           name: installer-site
           path: site
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.key.outputs.present == 'true'
         with:
           repository: ${{ env.INSTALLER_REPO }}
