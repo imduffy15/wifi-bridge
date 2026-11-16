@@ -117,7 +117,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: firmware
           path: dist
@@ -241,7 +241,7 @@ jobs:
             echo "::notice::INSTALLER_DEPLOY_KEY not set: not publishing to $INSTALLER_REPO"
           fi
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: steps.key.outputs.present == 'true'
         with:
           name: installer-site
